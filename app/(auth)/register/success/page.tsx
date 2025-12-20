@@ -1,12 +1,13 @@
 "use client"
 
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { CheckCircle2, Mail, ArrowRight, QrCode } from "lucide-react"
+import { CheckCircle2, Mail, ArrowRight, QrCode, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function RegisterSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'user'
 
@@ -64,5 +65,17 @@ export default function RegisterSuccessPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function RegisterSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfdfd]">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   )
 }

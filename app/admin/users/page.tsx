@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Users as UsersIcon,
   Search,
@@ -80,11 +80,7 @@ export default function UsersPage() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchUsers()
-  }, [roleFilter])
-
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true)
     try {
       let query = supabase
@@ -105,7 +101,11 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase, roleFilter])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   const filteredUsers = users.filter(user => {
     const searchStr = `${user.first_name} ${user.last_name} ${user.email} ${user.matric_number || ''} ${user.staff_id || ''}`.toLowerCase()

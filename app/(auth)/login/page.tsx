@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -23,7 +23,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 
-export default function LoginPage() {
+function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [selectedRole, setSelectedRole] = useState<'student' | 'lecturer' | 'admin'>('student')
@@ -155,8 +155,8 @@ export default function LoginPage() {
                   key={role.id}
                   onClick={() => setSelectedRole(role.id as any)}
                   className={`relative flex flex-col p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${selectedRole === role.id
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-gray-100 bg-white hover:border-gray-200"
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-gray-100 bg-white hover:border-gray-200"
                     }`}
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${selectedRole === role.id ? "bg-primary text-white" : "bg-gray-50 text-gray-400 group-hover:bg-gray-100"
@@ -272,5 +272,17 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfdfd]">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

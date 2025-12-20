@@ -61,7 +61,7 @@ export default function LecturerCoursesPage() {
 
       const formattedCourses = (data || []).map(c => {
         const sessions = c.lecture_sessions || []
-        const activeSession = sessions.find(s => s.status === 'active')
+        const activeSession = sessions.find((s: any) => s.status === 'active')
         const enrollments = c.course_enrollments || []
         const totalAtt = enrollments.reduce((acc: number, curr: any) => acc + Number(curr.attendance_percentage), 0)
         const avgAtt = enrollments.length ? Math.round(totalAtt / enrollments.length) : 0

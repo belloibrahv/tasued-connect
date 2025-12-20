@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { QRCodeGenerator } from "@/components/lecturer/QRCodeGenerator"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -491,8 +492,14 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
                       <div className="flex items-center gap-6">
                         <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 font-black text-sm uppercase overflow-hidden shadow-inner group-hover/item:scale-110 transition-transform">
-                          {record.users?.avatar_url ? (
-                            <img src={record.users.avatar_url} className="w-full h-full object-cover" />
+                          {(record.users as any)?.avatar_url ? (
+                            <Image
+                              src={(record.users as any).avatar_url}
+                              alt={`${record.users?.first_name} ${record.users?.last_name}`}
+                              width={56}
+                              height={56}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             `${record.users?.first_name?.[0]}${record.users?.last_name?.[0]}`
                           )}

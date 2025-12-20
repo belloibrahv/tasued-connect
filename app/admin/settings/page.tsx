@@ -33,6 +33,8 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import toast from "react-hot-toast"
+import { Badge } from "@/components/ui/badge"
+import { motion } from "framer-motion"
 
 export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false)

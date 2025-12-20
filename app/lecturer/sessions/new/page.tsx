@@ -32,7 +32,7 @@ export default async function CreateSessionPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold font-heading">Start New Session</h1>
-          <p className="text-muted-foreground">Configure details for today's lecture</p>
+          <p className="text-muted-foreground">Configure details for today&apos;s lecture</p>
         </div>
       </div>
 
