@@ -49,7 +49,7 @@ export default function LecturerCourseDetailsPage({ params }: { params: { id: st
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold font-heading">{course.code} - Course Management</h1>
+            <h1 className="text-2xl font-bold">{course.code} - Course Management</h1>
             <p className="text-muted-foreground">{course.title}</p>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function LecturerCourseDetailsPage({ params }: { params: { id: st
                         <div className="w-full max-w-[100px] h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className={`h-full ${student.attendance >= 75 ? 'bg-success' :
-                                student.attendance >= 60 ? 'bg-warning' : 'bg-destructive'
+                              student.attendance >= 60 ? 'bg-warning' : 'bg-destructive'
                               }`}
                             style={{ width: `${student.attendance}%` }}
                           />

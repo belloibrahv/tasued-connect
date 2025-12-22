@@ -38,41 +38,41 @@ export const registerSchema = z.object({
   path: ["confirmPassword"],
 }).superRefine((data, ctx) => {
   if (data.role === "student") {
-    if (!data.matricNumber) {
+    if (!data.matricNumber || data.matricNumber.trim().length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Matric number is required",
+        message: "Official Matric Number is required for student identification",
         path: ["matricNumber"],
       })
     }
-    if (!data.department) {
+    if (!data.department || data.department === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Department is required",
         path: ["department"],
       })
     }
-    if (!data.level) {
+    if (!data.level || data.level === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Level is required",
+        message: "Current Level is required",
         path: ["level"],
       })
     }
   }
 
   if (data.role === "lecturer") {
-    if (!data.staffId) {
+    if (!data.staffId || data.staffId.trim().length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Staff ID is required",
+        message: "Official Staff ID is required for lecturer identification",
         path: ["staffId"],
       })
     }
-    if (!data.title) {
+    if (!data.title || data.title === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Title is required",
+        message: "Academic Title is required",
         path: ["title"],
       })
     }

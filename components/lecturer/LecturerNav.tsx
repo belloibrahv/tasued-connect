@@ -47,7 +47,7 @@ export function LecturerNav() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <QrCode className="w-5 h-5 text-white" />
               </div>
-              <span className="font-heading font-bold text-primary hidden md:inline-block">AttendX Staff</span>
+              <span className="font-bold text-primary hidden md:inline-block">AttendX Staff</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
@@ -60,8 +60,8 @@ export function LecturerNav() {
                     key={link.href}
                     href={link.href}
                     className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-gray-600 hover:bg-gray-100"
+                      ? "bg-primary/10 text-primary"
+                      : "text-gray-600 hover:bg-gray-100"
                       }`}
                   >
                     <Icon className="w-4 h-4" />

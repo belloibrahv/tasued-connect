@@ -43,7 +43,7 @@ export default function ScanPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold font-heading">Scan Attendance</h1>
+          <h1 className="text-2xl font-bold">Scan Attendance</h1>
           <p className="text-muted-foreground">Scan the QR code displayed by your lecturer</p>
         </div>
       </div>

@@ -14,9 +14,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "TASUED AttendX - Smart Attendance Management",
-  description: "Modern attendance tracking system for Tai Solarin University of Education",
-  keywords: ["attendance", "TASUED", "university", "education", "QR code"],
+  title: "AttendEase - Face-Verified Attendance | TASUED",
+  description: "Simple, secure face-verified attendance system for Tai Solarin University of Education. No more proxy signing.",
+  keywords: ["attendance", "TASUED", "university", "education", "biometric", "face verification"],
 }
 
 export default function RootLayout({

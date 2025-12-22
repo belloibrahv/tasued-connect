@@ -46,7 +46,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             {course.code}
             <Badge variant="outline">{course.units} Units</Badge>
           </h1>
@@ -67,8 +67,8 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                   <div key={i} className="flex items-center justify-between py-3 border-b last:border-0 hover:bg-gray-50 px-2 rounded-lg transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`w-2 h-2 rounded-full ${record.status === 'Present' ? 'bg-success' :
-                          record.status === 'Absent' ? 'bg-destructive' :
-                            'bg-warning'
+                        record.status === 'Absent' ? 'bg-destructive' :
+                          'bg-warning'
                         }`} />
                       <div>
                         <p className="font-medium">{record.date}</p>

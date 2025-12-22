@@ -31,7 +31,7 @@ export default async function CreateSessionPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold font-heading">Start New Session</h1>
+          <h1 className="text-2xl font-bold">Start New Session</h1>
           <p className="text-muted-foreground">Configure details for today&apos;s lecture</p>
         </div>
       </div>
