@@ -254,7 +254,7 @@ export default function HomePage() {
               <div className="relative hidden md:block">
                 <div className="relative h-96 rounded-2xl overflow-hidden shadow-2xl">
                   <Image
-                    src="/images/drogunsanwo.png"
+                    src="/images/lecturers/drogunsanwo.png"
                     alt="Dr. Ogunsanwo"
                     fill
                     className="object-cover"
