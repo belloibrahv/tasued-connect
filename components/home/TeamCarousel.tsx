@@ -205,6 +205,7 @@ export function TeamCarousel() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -223,6 +224,31 @@ export function TeamCarousel() {
     }
   }, [])
 
+  // Auto-scroll effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (scrollRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
+        const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 10
+        
+        if (isAtEnd) {
+          // Reset to beginning
+          scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' })
+          setCurrentIndex(0)
+        } else {
+          // Scroll right
+          scrollRef.current.scrollBy({
+            left: 320,
+            behavior: 'smooth'
+          })
+          setCurrentIndex(prev => prev + 1)
+        }
+      }
+    }, 5000) // Auto-scroll every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const scrollAmount = 320
@@ -230,6 +256,11 @@ export function TeamCarousel() {
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
       })
+      if (direction === 'right') {
+        setCurrentIndex(prev => prev + 1)
+      } else {
+        setCurrentIndex(prev => Math.max(0, prev - 1))
+      }
     }
   }
 
@@ -238,32 +269,32 @@ export function TeamCarousel() {
       {/* Navigation Buttons */}
       <button
         onClick={() => scroll('left')}
-        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center transition-all ${
-          canScrollLeft ? 'opacity-100 hover:bg-gray-50' : 'opacity-0 pointer-events-none'
+        className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 ${
+          canScrollLeft ? 'opacity-100 hover:bg-purple-50 hover:shadow-2xl' : 'opacity-0 pointer-events-none'
         }`}
         aria-label="Scroll left"
       >
-        <ChevronLeft className="w-5 h-5 text-gray-600" />
+        <ChevronLeft className="w-6 h-6 text-purple-600" />
       </button>
       
       <button
         onClick={() => scroll('right')}
-        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center transition-all ${
-          canScrollRight ? 'opacity-100 hover:bg-gray-50' : 'opacity-0 pointer-events-none'
+        className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 ${
+          canScrollRight ? 'opacity-100 hover:bg-purple-50 hover:shadow-2xl' : 'opacity-0 pointer-events-none'
         }`}
         aria-label="Scroll right"
       >
-        <ChevronRight className="w-5 h-5 text-gray-600" />
+        <ChevronRight className="w-6 h-6 text-purple-600" />
       </button>
 
       {/* Gradient Overlays */}
-      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-gray-50 to-transparent z-[5] pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-gray-50 to-transparent z-[5] pointer-events-none" />
+      <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-[5] pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-[5] pointer-events-none" />
 
       {/* Scrollable Container */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide px-8 py-4 -mx-4"
+        className="flex gap-6 overflow-x-auto scrollbar-hide px-12 py-6 -mx-4"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {members.map((member, i) => (
@@ -271,11 +302,25 @@ export function TeamCarousel() {
         ))}
       </div>
 
+      {/* Progress Indicator */}
+      <div className="flex justify-center gap-2 mt-8">
+        {Array.from({ length: Math.ceil(members.length / 4) }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-2 rounded-full transition-all ${
+              i === Math.floor(currentIndex / 4)
+                ? 'bg-gradient-to-r from-purple-600 to-blue-600 w-8'
+                : 'bg-gray-300 w-2'
+            }`}
+          />
+        ))}
+      </div>
+
       {/* Member Count */}
       <div className="text-center mt-6">
-        <span className="inline-flex items-center gap-2 text-sm text-gray-500">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-          {members.length} students contributed to this project
+        <span className="inline-flex items-center gap-2 text-sm text-gray-600 font-medium">
+          <span className="w-2 h-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full animate-pulse"></span>
+          {members.length} talented students • Auto-scrolling carousel
         </span>
       </div>
     </div>
@@ -292,24 +337,31 @@ function MemberCard({ member, index }: { member: { name: string; matric: string 
 
   return (
     <div 
-      className="flex-shrink-0 w-[200px] group"
+      className="flex-shrink-0 w-[240px] group"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-300">
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-purple-300 hover:shadow-2xl transition-all duration-300 h-full hover:scale-105 hover:-translate-y-2">
         {/* Avatar */}
-        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-lg font-bold mb-4 group-hover:scale-105 transition-transform`}>
+        <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xl font-bold mb-5 group-hover:scale-110 transition-transform shadow-lg`}>
           {initials}
         </div>
         
         {/* Name */}
-        <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-1">
+        <h3 className="font-bold text-gray-900 text-sm leading-tight mb-2 line-clamp-2">
           {firstName} {lastName}
         </h3>
         
         {/* Matric */}
-        <p className="text-xs text-gray-400 font-mono">
+        <p className="text-xs text-gray-500 font-mono bg-gray-50 px-3 py-2 rounded-lg inline-block">
           {member.matric}
         </p>
+
+        {/* Decorative Element */}
+        <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+          <div className="w-2 h-2 bg-purple-500 rounded-full" />
+          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+          <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+        </div>
       </div>
     </div>
   )

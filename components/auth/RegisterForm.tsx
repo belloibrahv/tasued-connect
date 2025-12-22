@@ -88,17 +88,17 @@ export function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         {/* Role Selection */}
         <FormField
           control={form.control}
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">I am a</FormLabel>
+              <FormLabel className="text-gray-700 font-medium">I am a</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger className="h-11 rounded-lg">
+                  <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                 </FormControl>
@@ -113,15 +113,19 @@ export function RegisterForm() {
         />
 
         {/* Name Fields */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-gray-700">First Name</FormLabel>
+                <FormLabel className="text-gray-700 font-medium">First Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="John" className="h-11 rounded-lg" {...field} />
+                  <Input 
+                    placeholder="John" 
+                    className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -132,9 +136,13 @@ export function RegisterForm() {
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-gray-700">Last Name</FormLabel>
+                <FormLabel className="text-gray-700 font-medium">Last Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Doe" className="h-11 rounded-lg" {...field} />
+                  <Input 
+                    placeholder="Doe" 
+                    className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -148,9 +156,13 @@ export function RegisterForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">Email</FormLabel>
+              <FormLabel className="text-gray-700 font-medium">Email address</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" className="h-11 rounded-lg" {...field} />
+                <Input 
+                  placeholder="name@example.com" 
+                  className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -165,24 +177,28 @@ export function RegisterForm() {
               name="matricNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-700">Matric Number</FormLabel>
+                  <FormLabel className="text-gray-700 font-medium">Matric Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="20220294001" className="h-11 rounded-lg" {...field} />
+                    <Input 
+                      placeholder="20220294001" 
+                      className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="department"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">Department</FormLabel>
+                    <FormLabel className="text-gray-700 font-medium">Department</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-11 rounded-lg">
+                        <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -202,10 +218,10 @@ export function RegisterForm() {
                 name="level"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-700">Level</FormLabel>
+                    <FormLabel className="text-gray-700 font-medium">Level</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-11 rounded-lg">
+                        <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -226,15 +242,19 @@ export function RegisterForm() {
 
         {/* Lecturer Fields */}
         {role === "lecturer" && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="staffId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-700">Staff ID</FormLabel>
+                  <FormLabel className="text-gray-700 font-medium">Staff ID</FormLabel>
                   <FormControl>
-                    <Input placeholder="STF001" className="h-11 rounded-lg" {...field} />
+                    <Input 
+                      placeholder="STF001" 
+                      className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -245,10 +265,10 @@ export function RegisterForm() {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-700">Title</FormLabel>
+                  <FormLabel className="text-gray-700 font-medium">Title</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11 rounded-lg">
+                      <SelectTrigger className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
                     </FormControl>
@@ -273,21 +293,21 @@ export function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">Password</FormLabel>
+              <FormLabel className="text-gray-700 font-medium">Password</FormLabel>
               <FormControl>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className="h-11 rounded-lg pr-10"
+                    placeholder="Create a strong password"
+                    className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500 pr-12"
                     {...field}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </FormControl>
@@ -301,12 +321,12 @@ export function RegisterForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+              <FormLabel className="text-gray-700 font-medium">Confirm Password</FormLabel>
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="••••••••"
-                  className="h-11 rounded-lg"
+                  placeholder="Confirm your password"
+                  className="h-12 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-500"
                   {...field}
                 />
               </FormControl>
@@ -317,10 +337,10 @@ export function RegisterForm() {
 
         <Button 
           type="submit" 
-          className="w-full h-11 rounded-full font-medium" 
+          className="w-full h-12 rounded-xl font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-lg transition-all" 
           disabled={isLoading}
         >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
           Create Account
         </Button>
       </form>
