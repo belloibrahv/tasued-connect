@@ -108,7 +108,7 @@ export default function HomePage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mt-12 md:mt-16 pt-12 md:pt-16 border-t border-white/10">
                   <div>
-                    <p className="text-2xl md:text-3xl font-bold text-white">180+</p>
+                    <p className="text-2xl md:text-3xl font-bold text-white">96</p>
                     <p className="text-sm text-gray-300">Students</p>
                   </div>
                   <div>
@@ -275,7 +275,7 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12 md:mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Our Team</h2>
-              <p className="text-gray-600 text-lg">180+ talented students from CSC 415 • Net-Centric Computing</p>
+              <p className="text-gray-600 text-lg">96 talented students from CSC 415 • Net-Centric Computing</p>
             </div>
             <TeamCarousel />
           </div>
@@ -316,7 +316,7 @@ export default function HomePage() {
               Ready to get started?
             </h2>
             <p className="text-white/90 mb-8 text-lg max-w-2xl mx-auto">
-              Register your face once and mark attendance with a quick scan. Join 180+ students already using FaceCheck.
+              Register your face once and mark attendance with a quick scan. Join 96 students already using FaceCheck.
             </p>
             <Link href="/register">
               <Button size="lg" className="px-8 h-12 rounded-full font-semibold bg-white text-purple-600 hover:bg-gray-100 hover:shadow-2xl transition-all hover:scale-105">
@@ -372,7 +372,7 @@ export default function HomePage() {
               © 2025 FaceCheck. CSC 415 • Net-Centric Computing • TASUED
             </p>
             <p className="text-sm text-gray-400">
-              Built by 180+ students from the Department of Computer Science
+              Built by 96 students from the Department of Computer Science
             </p>
           </div>
         </div>

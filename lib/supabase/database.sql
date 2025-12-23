@@ -26,6 +26,9 @@ CREATE TABLE public.users (
   title TEXT,
   office_location TEXT,
   
+  -- Face Recognition
+  face_descriptor JSONB,
+  
   -- Status
   is_active BOOLEAN DEFAULT true,
   is_email_verified BOOLEAN DEFAULT false,
@@ -145,7 +148,7 @@ CREATE TABLE public.attendance_records (
   status TEXT NOT NULL CHECK (status IN ('present', 'absent', 'late', 'excused')),
   marked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   marked_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
-  marking_method TEXT DEFAULT 'qr' CHECK (marking_method IN ('qr', 'manual', 'system')),
+  marking_method TEXT DEFAULT 'qr' CHECK (marking_method IN ('qr', 'manual', 'system', 'face')),
   
   -- Additional info
   check_in_time TIME,

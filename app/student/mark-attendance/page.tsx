@@ -1,14 +1,21 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash } from "lucide-react"
+import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import {
+  loadModels,
+  extractFaceDescriptor,
+  deserializeDescriptor,
+  verifyFaceMatch,
+  detectFace
+} from "@/lib/face-recognition"
 
-type Step = "code" | "verify" | "success" | "failed"
+type Step = "code" | "loading-models" | "verify" | "verifying" | "success" | "failed"
 
 export default function MarkAttendancePage() {
   const [step, setStep] = useState<Step>("code")
@@ -17,13 +24,64 @@ export default function MarkAttendancePage() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [faceDetected, setFaceDetected] = useState(false)
+  const [modelsReady, setModelsReady] = useState(false)
+  const [enrolledDescriptor, setEnrolledDescriptor] = useState<Float32Array | null>(null)
+  const [verificationResult, setVerificationResult] = useState<{ confidence: number } | null>(null)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   const supabase = createClient()
   const router = useRouter()
+
+  // Load models and get enrolled face descriptor
+  const initializeVerification = useCallback(async () => {
+    setStep("loading-models")
+    setError(null)
+    
+    try {
+      // Load face recognition models
+      const loaded = await loadModels()
+      if (!loaded) {
+        setError("Failed to load face recognition. Please refresh and try again.")
+        setStep("code")
+        return
+      }
+      
+      // Get user's enrolled face descriptor
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
+      
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("face_descriptor, profile_photo_url")
+        .eq("id", user.id)
+        .single()
+      
+      if (userError) throw userError
+      
+      if (!userData?.face_descriptor) {
+        setError("You haven't enrolled your face yet. Please enroll first.")
+        setStep("code")
+        router.push("/student/enroll-face")
+        return
+      }
+      
+      // Deserialize the stored descriptor
+      const descriptor = deserializeDescriptor(userData.face_descriptor)
+      setEnrolledDescriptor(descriptor)
+      setModelsReady(true)
+      setStep("verify")
+      
+    } catch (err: any) {
+      console.error("Initialization error:", err)
+      setError(err.message || "Failed to initialize verification")
+      setStep("code")
+    }
+  }, [supabase, router])
 
   const startCamera = useCallback(async () => {
     try {
@@ -49,12 +107,34 @@ export default function MarkAttendancePage() {
       streamRef.current = null
       setCameraReady(false)
     }
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current)
+      detectionIntervalRef.current = null
+    }
   }, [])
+
+  // Real-time face detection
+  useEffect(() => {
+    if (step === "verify" && cameraReady && modelsReady && videoRef.current) {
+      detectionIntervalRef.current = setInterval(async () => {
+        if (videoRef.current) {
+          const detection = await detectFace(videoRef.current)
+          setFaceDetected(!!detection)
+        }
+      }, 500)
+    }
+    
+    return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current)
+      }
+    }
+  }, [step, cameraReady, modelsReady])
 
   useEffect(() => {
     if (step === "verify") {
       startCamera()
-    } else {
+    } else if (step !== "verifying") {
       stopCamera()
     }
     
@@ -101,7 +181,9 @@ export default function MarkAttendancePage() {
       }
       
       setSession(sessionData)
-      setStep("verify")
+      
+      // Initialize face verification
+      await initializeVerification()
       
     } catch (err: any) {
       setError(err.message || "Something went wrong")
@@ -111,9 +193,9 @@ export default function MarkAttendancePage() {
   }
 
   const verifyFaceAndMark = async () => {
-    if (!videoRef.current || !canvasRef.current || !session) return
+    if (!videoRef.current || !canvasRef.current || !session || !enrolledDescriptor) return
     
-    setIsVerifying(true)
+    setStep("verifying")
     setError(null)
     
     try {
@@ -129,28 +211,29 @@ export default function MarkAttendancePage() {
       
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
       ctx.drawImage(video, 0, 0)
       
-      // In a real implementation, you would:
-      // 1. Send the captured image to a face recognition API
-      // 2. Compare with the enrolled face
-      // 3. Return match confidence
+      // Extract face descriptor from current frame
+      const currentDescriptor = await extractFaceDescriptor(canvas)
       
-      // For this demo, we'll simulate face verification
-      // In production, integrate with a service like AWS Rekognition, 
-      // Azure Face API, or a self-hosted solution
+      if (!currentDescriptor) {
+        setError("No face detected. Please ensure your face is clearly visible.")
+        setStep("verify")
+        return
+      }
       
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API call
+      // Compare with enrolled face
+      const result = await verifyFaceMatch(enrolledDescriptor, currentDescriptor, 0.5)
       
-      // Simulate 90% success rate for demo
-      const isMatch = Math.random() > 0.1
+      console.log("Face verification result:", result)
       
-      if (!isMatch) {
+      if (!result.isMatch) {
+        setVerificationResult({ confidence: result.confidence })
         setStep("failed")
         return
       }
+      
+      setVerificationResult({ confidence: result.confidence })
       
       // Mark attendance
       const { error: attendanceError } = await supabase
@@ -169,9 +252,9 @@ export default function MarkAttendancePage() {
       setStep("success")
       
     } catch (err: any) {
+      console.error("Verification error:", err)
       setError(err.message || "Verification failed")
-    } finally {
-      setIsVerifying(false)
+      setStep("verify")
     }
   }
 
@@ -184,7 +267,7 @@ export default function MarkAttendancePage() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <Scan className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-semibold text-gray-900 text-sm">Mark Attendance</span>
@@ -199,8 +282,8 @@ export default function MarkAttendancePage() {
           {step === "code" && (
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Hash className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Hash className="w-8 h-8 text-purple-600" />
                 </div>
                 <h1 className="text-xl font-bold text-gray-900 mb-2">
                   Enter session code
@@ -216,12 +299,13 @@ export default function MarkAttendancePage() {
                   placeholder="e.g. ABC123"
                   value={sessionCode}
                   onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                  className="h-12 text-center text-lg font-mono tracking-widest uppercase"
+                  className="h-12 text-center text-lg font-mono tracking-widest uppercase rounded-xl"
                   maxLength={10}
                 />
                 
                 {error && (
-                  <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center">
+                  <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center flex items-center justify-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
                     {error}
                   </div>
                 )}
@@ -229,7 +313,7 @@ export default function MarkAttendancePage() {
                 <Button 
                   onClick={verifySession}
                   disabled={isVerifying || !sessionCode.trim()}
-                  className="w-full h-11 rounded-full font-medium"
+                  className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
                 >
                   {isVerifying ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -241,15 +325,36 @@ export default function MarkAttendancePage() {
             </div>
           )}
 
+          {/* Loading Models Step */}
+          {step === "loading-models" && (
+            <div className="text-center space-y-6 py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+              </div>
+              
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">
+                  Preparing Verification
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Loading face recognition models...
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Face Verification Step */}
           {step === "verify" && session && (
             <div className="space-y-4">
               {/* Session Info */}
-              <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
                 <p className="font-semibold text-gray-900">
                   {session.courses?.code} - {session.courses?.title}
                 </p>
+                {session.topic && (
+                  <p className="text-sm text-gray-500 mt-1">{session.topic}</p>
+                )}
               </div>
 
               <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden">
@@ -263,7 +368,18 @@ export default function MarkAttendancePage() {
                 
                 {/* Face guide overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-60 border-2 border-white/50 rounded-[100px]" />
+                  <div className={`w-48 h-60 border-2 rounded-[100px] transition-colors duration-300 ${
+                    faceDetected ? 'border-emerald-400 shadow-lg shadow-emerald-400/30' : 'border-white/50'
+                  }`} />
+                </div>
+                
+                {/* Face detection indicator */}
+                <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  faceDetected 
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-black/50 text-white/70'
+                }`}>
+                  {faceDetected ? '✓ Face Detected' : 'Position your face'}
                 </div>
                 
                 {!cameraReady && !error && (
@@ -271,35 +387,50 @@ export default function MarkAttendancePage() {
                     <Loader2 className="w-6 h-6 text-white animate-spin" />
                   </div>
                 )}
-                
-                {isVerifying && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
-                    <Loader2 className="w-8 h-8 text-white animate-spin mb-3" />
-                    <p className="text-white text-sm">Verifying face...</p>
-                  </div>
-                )}
               </div>
               
               <canvas ref={canvasRef} className="hidden" />
               
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   {error}
                 </div>
               )}
 
               <p className="text-center text-sm text-gray-500">
-                Position your face and tap verify
+                {faceDetected 
+                  ? "Face detected! Tap verify to mark attendance."
+                  : "Position your face within the oval"
+                }
               </p>
 
               <Button 
                 onClick={verifyFaceAndMark}
-                disabled={!cameraReady || isVerifying}
-                className="w-full h-11 rounded-full font-medium"
+                disabled={!cameraReady || !faceDetected}
+                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-50"
               >
-                <Camera className="w-4 h-4 mr-2" />
+                <ShieldCheck className="w-4 h-4 mr-2" />
                 Verify & Mark Present
               </Button>
+            </div>
+          )}
+
+          {/* Verifying Step */}
+          {step === "verifying" && (
+            <div className="text-center space-y-6 py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+              </div>
+              
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">
+                  Verifying Identity
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Comparing your face with enrolled data...
+                </p>
+              </div>
             </div>
           )}
 
@@ -319,9 +450,20 @@ export default function MarkAttendancePage() {
                 </p>
               </div>
 
+              {verificationResult && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                    <span className="font-medium text-emerald-900">
+                      Face Match: {verificationResult.confidence}% confidence
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <Button 
                 onClick={() => router.push("/student/dashboard")}
-                className="w-full h-11 rounded-full font-medium"
+                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >
                 Back to Dashboard
               </Button>
@@ -340,14 +482,32 @@ export default function MarkAttendancePage() {
                   Verification failed
                 </h1>
                 <p className="text-sm text-gray-500">
-                  We couldn&apos;t verify your face. Please try again with better lighting.
+                  Your face didn&apos;t match the enrolled data.
                 </p>
+              </div>
+
+              {verificationResult && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-red-900 text-sm">
+                    Match confidence: {verificationResult.confidence}% (minimum 50% required)
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-left">
+                <p className="text-amber-900 text-sm font-medium mb-2">Tips for better verification:</p>
+                <ul className="text-amber-700 text-xs space-y-1">
+                  <li>• Ensure good lighting on your face</li>
+                  <li>• Remove glasses or face coverings</li>
+                  <li>• Look directly at the camera</li>
+                  <li>• Keep a neutral expression</li>
+                </ul>
               </div>
 
               <div className="space-y-3">
                 <Button 
                   onClick={() => setStep("verify")}
-                  className="w-full h-11 rounded-full font-medium"
+                  className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
                 >
                   Try Again
                 </Button>

@@ -1,27 +1,58 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import { Camera, CheckCircle, ArrowLeft, Loader2, RefreshCw, Scan } from "lucide-react"
+import { Camera, CheckCircle, ArrowLeft, Loader2, RefreshCw, Scan, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { 
+  loadModels, 
+  extractFaceDescriptor, 
+  serializeDescriptor,
+  detectFace 
+} from "@/lib/face-recognition"
 
-type Step = "intro" | "capture" | "confirm" | "success"
+type Step = "intro" | "loading-models" | "capture" | "processing" | "confirm" | "success"
 
 export default function EnrollFacePage() {
   const [step, setStep] = useState<Step>("intro")
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [faceDescriptor, setFaceDescriptor] = useState<Float32Array | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [faceDetected, setFaceDetected] = useState(false)
+  const [modelsReady, setModelsReady] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   const supabase = createClient()
   const router = useRouter()
+
+  // Load face recognition models
+  const initializeModels = useCallback(async () => {
+    setStep("loading-models")
+    setError(null)
+    
+    try {
+      const loaded = await loadModels()
+      if (loaded) {
+        setModelsReady(true)
+        setStep("capture")
+      } else {
+        setError("Failed to load face recognition models. Please refresh and try again.")
+        setStep("intro")
+      }
+    } catch (err) {
+      console.error("Model loading error:", err)
+      setError("Failed to initialize face recognition. Please try again.")
+      setStep("intro")
+    }
+  }, [])
 
   const startCamera = useCallback(async () => {
     try {
@@ -47,20 +78,45 @@ export default function EnrollFacePage() {
       streamRef.current = null
       setCameraReady(false)
     }
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current)
+      detectionIntervalRef.current = null
+    }
   }, [])
+
+  // Real-time face detection for UI feedback
+  useEffect(() => {
+    if (step === "capture" && cameraReady && modelsReady && videoRef.current) {
+      detectionIntervalRef.current = setInterval(async () => {
+        if (videoRef.current) {
+          const detection = await detectFace(videoRef.current)
+          setFaceDetected(!!detection)
+        }
+      }, 500)
+    }
+    
+    return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current)
+      }
+    }
+  }, [step, cameraReady, modelsReady])
 
   useEffect(() => {
     if (step === "capture") {
       startCamera()
-    } else {
+    } else if (step !== "processing" && step !== "confirm") {
       stopCamera()
     }
     
     return () => stopCamera()
   }, [step, startCamera, stopCamera])
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return
+    
+    setStep("processing")
+    setError(null)
     
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -76,18 +132,41 @@ export default function EnrollFacePage() {
     ctx.scale(-1, 1)
     ctx.drawImage(video, 0, 0)
     
-    const imageData = canvas.toDataURL("image/jpeg", 0.8)
+    const imageData = canvas.toDataURL("image/jpeg", 0.9)
     setCapturedImage(imageData)
-    setStep("confirm")
+    
+    // Extract face descriptor
+    try {
+      // Reset transform for face detection
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(video, 0, 0)
+      
+      const descriptor = await extractFaceDescriptor(canvas)
+      
+      if (!descriptor) {
+        setError("No face detected. Please ensure your face is clearly visible and try again.")
+        setStep("capture")
+        return
+      }
+      
+      setFaceDescriptor(descriptor)
+      setStep("confirm")
+      
+    } catch (err) {
+      console.error("Face extraction error:", err)
+      setError("Failed to process face. Please try again with better lighting.")
+      setStep("capture")
+    }
   }
 
   const retakePhoto = () => {
     setCapturedImage(null)
+    setFaceDescriptor(null)
     setStep("capture")
   }
 
   const uploadPhoto = async () => {
-    if (!capturedImage) return
+    if (!capturedImage || !faceDescriptor) return
     
     setIsUploading(true)
     setError(null)
@@ -113,10 +192,16 @@ export default function EnrollFacePage() {
         .from("face-photos")
         .getPublicUrl(fileName)
       
-      // Update user profile
+      // Serialize face descriptor for storage
+      const serializedDescriptor = serializeDescriptor(faceDescriptor)
+      
+      // Update user profile with photo URL and face descriptor
       const { error: updateError } = await supabase
         .from("users")
-        .update({ profile_photo_url: publicUrl })
+        .update({ 
+          profile_photo_url: publicUrl,
+          face_descriptor: serializedDescriptor
+        })
         .eq("id", user.id)
       
       if (updateError) throw updateError
@@ -140,7 +225,7 @@ export default function EnrollFacePage() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <Scan className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-semibold text-gray-900 text-sm">Enroll Face</span>
@@ -154,8 +239,8 @@ export default function EnrollFacePage() {
           {/* Intro Step */}
           {step === "intro" && (
             <div className="text-center space-y-6">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                <Camera className="w-10 h-10 text-gray-400" />
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Camera className="w-10 h-10 text-purple-600" />
               </div>
               
               <div>
@@ -163,12 +248,12 @@ export default function EnrollFacePage() {
                   Register your face
                 </h1>
                 <p className="text-gray-500 text-sm">
-                  We&apos;ll use your face to verify your identity when marking attendance. 
+                  We&apos;ll use AI-powered face recognition to verify your identity when marking attendance. 
                   This is a one-time setup.
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl p-4 border border-gray-100 text-left space-y-3">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 text-left space-y-3">
                 <h3 className="font-medium text-gray-900 text-sm">Tips for a good photo:</h3>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
@@ -183,15 +268,48 @@ export default function EnrollFacePage() {
                     <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                     <span>Remove glasses or face coverings</span>
                   </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <span>Keep a neutral expression</span>
+                  </li>
                 </ul>
               </div>
 
+              {error && (
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
               <Button 
-                onClick={() => setStep("capture")} 
-                className="w-full h-11 rounded-full font-medium"
+                onClick={initializeModels} 
+                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >
                 Open Camera
               </Button>
+            </div>
+          )}
+
+          {/* Loading Models Step */}
+          {step === "loading-models" && (
+            <div className="text-center space-y-6 py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+              </div>
+              
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">
+                  Initializing Face Recognition
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Loading AI models... This may take a few seconds.
+                </p>
+              </div>
+              
+              <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-purple-600 to-blue-600 rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
             </div>
           )}
 
@@ -209,7 +327,18 @@ export default function EnrollFacePage() {
                 
                 {/* Face guide overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-60 border-2 border-white/50 rounded-[100px]" />
+                  <div className={`w-48 h-60 border-2 rounded-[100px] transition-colors duration-300 ${
+                    faceDetected ? 'border-emerald-400 shadow-lg shadow-emerald-400/30' : 'border-white/50'
+                  }`} />
+                </div>
+                
+                {/* Face detection indicator */}
+                <div className={`absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  faceDetected 
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-black/50 text-white/70'
+                }`}>
+                  {faceDetected ? '✓ Face Detected' : 'Position your face'}
                 </div>
                 
                 {!cameraReady && !error && (
@@ -222,23 +351,45 @@ export default function EnrollFacePage() {
               <canvas ref={canvasRef} className="hidden" />
               
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   {error}
                 </div>
               )}
 
               <p className="text-center text-sm text-gray-500">
-                Position your face within the oval
+                {faceDetected 
+                  ? "Great! Your face is detected. Tap capture when ready."
+                  : "Position your face within the oval"
+                }
               </p>
 
               <Button 
                 onClick={capturePhoto}
-                disabled={!cameraReady}
-                className="w-full h-11 rounded-full font-medium"
+                disabled={!cameraReady || !faceDetected}
+                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-50"
               >
                 <Camera className="w-4 h-4 mr-2" />
                 Capture Photo
               </Button>
+            </div>
+          )}
+
+          {/* Processing Step */}
+          {step === "processing" && (
+            <div className="text-center space-y-6 py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+              </div>
+              
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">
+                  Processing Face
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  Extracting facial features for recognition...
+                </p>
+              </div>
             </div>
           )}
 
@@ -252,13 +403,31 @@ export default function EnrollFacePage() {
                   alt="Captured face" 
                   className="w-full h-full object-cover"
                 />
+                
+                {/* Success badge */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500 text-white">
+                  ✓ Face Captured Successfully
+                </div>
               </div>
               
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   {error}
                 </div>
               )}
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-emerald-900 text-sm">Face features extracted</p>
+                    <p className="text-emerald-700 text-xs mt-1">
+                      Your unique facial signature has been captured and will be used for attendance verification.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <p className="text-center text-sm text-gray-500">
                 Is your face clearly visible?
@@ -277,12 +446,12 @@ export default function EnrollFacePage() {
                 <Button 
                   onClick={uploadPhoto}
                   disabled={isUploading}
-                  className="flex-1 h-11 rounded-full font-medium"
+                  className="flex-1 h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
                 >
                   {isUploading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    "Confirm"
+                    "Confirm & Save"
                   )}
                 </Button>
               </div>
@@ -305,9 +474,16 @@ export default function EnrollFacePage() {
                 </p>
               </div>
 
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
+                <p className="text-blue-900 text-sm font-medium">What&apos;s next?</p>
+                <p className="text-blue-700 text-xs mt-1">
+                  When your lecturer starts a session, enter the session code and verify your face to mark attendance.
+                </p>
+              </div>
+
               <Button 
                 onClick={() => router.push("/student/dashboard")}
-                className="w-full h-11 rounded-full font-medium"
+                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >
                 Go to Dashboard
               </Button>
