@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck } from "lucide-react"
+import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck, MapPin, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
@@ -14,8 +14,14 @@ import {
   verifyFaceMatch,
   detectFace
 } from "@/lib/face-recognition"
+import {
+  getCurrentLocation,
+  verifyLocation,
+  type Coordinates,
+  type LocationVerificationResult
+} from "@/lib/geolocation"
 
-type Step = "code" | "loading-models" | "verify" | "verifying" | "success" | "failed"
+type Step = "code" | "loading-models" | "location" | "verify" | "verifying" | "success" | "failed"
 
 export default function MarkAttendancePage() {
   const [step, setStep] = useState<Step>("code")
@@ -28,6 +34,10 @@ export default function MarkAttendancePage() {
   const [modelsReady, setModelsReady] = useState(false)
   const [enrolledDescriptor, setEnrolledDescriptor] = useState<Float32Array | null>(null)
   const [verificationResult, setVerificationResult] = useState<{ confidence: number } | null>(null)
+  const [studentLocation, setStudentLocation] = useState<Coordinates | null>(null)
+  const [locationResult, setLocationResult] = useState<LocationVerificationResult | null>(null)
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [requiresLocation, setRequiresLocation] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -182,13 +192,60 @@ export default function MarkAttendancePage() {
       
       setSession(sessionData)
       
-      // Initialize face verification
-      await initializeVerification()
+      // Check if location verification is required
+      const hasLocationRequirement = sessionData.location_latitude && sessionData.location_longitude
+      setRequiresLocation(hasLocationRequirement)
+      
+      if (hasLocationRequirement) {
+        // Go to location verification step first
+        setStep("location")
+      } else {
+        // Skip to face verification
+        await initializeVerification()
+      }
       
     } catch (err: any) {
       setError(err.message || "Something went wrong")
     } finally {
       setIsVerifying(false)
+    }
+  }
+
+  const verifyStudentLocation = async () => {
+    if (!session) return
+    
+    setIsGettingLocation(true)
+    setError(null)
+    
+    try {
+      const location = await getCurrentLocation()
+      setStudentLocation(location)
+      
+      const classLocation: Coordinates = {
+        latitude: session.location_latitude,
+        longitude: session.location_longitude
+      }
+      
+      const result = verifyLocation(
+        location,
+        classLocation,
+        session.location_radius || 100
+      )
+      
+      setLocationResult(result)
+      
+      if (!result.isWithinRange) {
+        setError(`You are ${result.distance}m away from the class. You must be within ${session.location_radius || 100}m to mark attendance.`)
+        return
+      }
+      
+      // Location verified, proceed to face verification
+      await initializeVerification()
+      
+    } catch (err: any) {
+      setError(err.message || "Failed to get your location")
+    } finally {
+      setIsGettingLocation(false)
     }
   }
 
@@ -236,16 +293,27 @@ export default function MarkAttendancePage() {
       setVerificationResult({ confidence: result.confidence })
       
       // Mark attendance
+      const attendanceData: any = {
+        session_id: session.id,
+        student_id: user.id,
+        course_id: session.course_id,
+        status: "present",
+        marking_method: "face",
+        check_in_time: new Date().toTimeString().split(" ")[0]
+      }
+      
+      // Add location data if verified
+      if (studentLocation && locationResult) {
+        attendanceData.location_latitude = studentLocation.latitude
+        attendanceData.location_longitude = studentLocation.longitude
+        attendanceData.location_accuracy = studentLocation.accuracy
+        attendanceData.location_distance = locationResult.distance
+        attendanceData.location_verified = locationResult.isWithinRange
+      }
+      
       const { error: attendanceError } = await supabase
         .from("attendance_records")
-        .insert({
-          session_id: session.id,
-          student_id: user.id,
-          course_id: session.course_id,
-          status: "present",
-          marking_method: "face",
-          check_in_time: new Date().toTimeString().split(" ")[0]
-        })
+        .insert(attendanceData)
       
       if (attendanceError) throw attendanceError
       
@@ -340,6 +408,84 @@ export default function MarkAttendancePage() {
                   Loading face recognition models...
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Location Verification Step */}
+          {step === "location" && session && (
+            <div className="space-y-6">
+              {/* Session Info */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
+                <p className="font-semibold text-gray-900">
+                  {session.courses?.code} - {session.courses?.title}
+                </p>
+                {session.venue && (
+                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {session.venue}
+                  </p>
+                )}
+              </div>
+
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Navigation className="w-10 h-10 text-blue-600" />
+                </div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">
+                  Verify Your Location
+                </h1>
+                <p className="text-gray-500 text-sm">
+                  We need to confirm you&apos;re physically in the classroom.
+                  You must be within {session.location_radius || 100}m of the venue.
+                </p>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Location verification failed</p>
+                    <p className="mt-1">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {locationResult && !locationResult.isWithinRange && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-amber-900 text-sm font-medium mb-2">You&apos;re too far from the class</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-amber-700">Your distance:</span>
+                    <span className="font-mono font-bold text-amber-900">{locationResult.distance}m</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm mt-1">
+                    <span className="text-amber-700">Required:</span>
+                    <span className="font-mono text-amber-900">≤ {session.location_radius || 100}m</span>
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                onClick={verifyStudentLocation}
+                disabled={isGettingLocation}
+                className="w-full h-12 rounded-full font-medium bg-gradient-to-r from-blue-600 to-cyan-600"
+              >
+                {isGettingLocation ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Getting Location...
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="w-5 h-5 mr-2" />
+                    {locationResult ? "Try Again" : "Verify My Location"}
+                  </>
+                )}
+              </Button>
+
+              <p className="text-center text-xs text-gray-400">
+                Make sure location services are enabled on your device
+              </p>
             </div>
           )}
 
@@ -450,16 +596,29 @@ export default function MarkAttendancePage() {
                 </p>
               </div>
 
-              {verificationResult && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                  <div className="flex items-center justify-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                    <span className="font-medium text-emerald-900">
-                      Face Match: {verificationResult.confidence}% confidence
-                    </span>
+              <div className="space-y-3">
+                {verificationResult && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                      <span className="font-medium text-emerald-900">
+                        Face Match: {verificationResult.confidence}% confidence
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {locationResult && locationResult.isWithinRange && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <MapPin className="w-5 h-5 text-blue-600" />
+                      <span className="font-medium text-blue-900">
+                        Location Verified: {locationResult.distance}m from class
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <Button 
                 onClick={() => router.push("/student/dashboard")}
