@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck, MapPin, Navigation } from "lucide-react"
+import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck, MapPin, Navigation, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
@@ -20,8 +20,15 @@ import {
   type Coordinates,
   type LocationVerificationResult
 } from "@/lib/geolocation"
+import {
+  getRandomChallenge,
+  getChallengeInstruction,
+  performLivenessCheck,
+  resetLivenessState,
+  type LivenessChallenge
+} from "@/lib/liveness-detection"
 
-type Step = "code" | "loading-models" | "location" | "verify" | "verifying" | "success" | "failed"
+type Step = "code" | "loading-models" | "location" | "liveness" | "verify" | "verifying" | "success" | "failed"
 
 export default function MarkAttendancePage() {
   const [step, setStep] = useState<Step>("code")
@@ -38,6 +45,9 @@ export default function MarkAttendancePage() {
   const [locationResult, setLocationResult] = useState<LocationVerificationResult | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [requiresLocation, setRequiresLocation] = useState(false)
+  const [livenessChallenge, setLivenessChallenge] = useState<LivenessChallenge | null>(null)
+  const [livenessProgress, setLivenessProgress] = useState(0)
+  const [livenessPassed, setLivenessPassed] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -84,7 +94,9 @@ export default function MarkAttendancePage() {
       const descriptor = deserializeDescriptor(userData.face_descriptor)
       setEnrolledDescriptor(descriptor)
       setModelsReady(true)
-      setStep("verify")
+      
+      // Go to liveness detection step
+      setStep("liveness")
       
     } catch (err: any) {
       console.error("Initialization error:", err)
@@ -142,7 +154,7 @@ export default function MarkAttendancePage() {
   }, [step, cameraReady, modelsReady])
 
   useEffect(() => {
-    if (step === "verify") {
+    if (step === "verify" || step === "liveness") {
       startCamera()
     } else if (step !== "verifying") {
       stopCamera()
@@ -150,6 +162,50 @@ export default function MarkAttendancePage() {
     
     return () => stopCamera()
   }, [step, startCamera, stopCamera])
+
+  // Start liveness check when entering liveness step
+  useEffect(() => {
+    if (step === "liveness" && cameraReady && videoRef.current) {
+      startLivenessCheck()
+    }
+  }, [step, cameraReady])
+
+  const startLivenessCheck = async () => {
+    if (!videoRef.current) return
+    
+    // Get a random challenge
+    const challenge = getRandomChallenge()
+    setLivenessChallenge(challenge)
+    setLivenessProgress(0)
+    setError(null)
+    
+    // Wait a moment for user to see the instruction
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // Perform the liveness check
+    const passed = await performLivenessCheck(
+      videoRef.current,
+      challenge,
+      (progress) => setLivenessProgress(progress)
+    )
+    
+    if (passed) {
+      setLivenessPassed(true)
+      // Short delay to show success, then move to face verification
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      setStep("verify")
+    } else {
+      setError("Liveness check failed. Please follow the instruction and try again.")
+      setLivenessChallenge(null)
+    }
+  }
+
+  const retryLivenessCheck = () => {
+    setError(null)
+    setLivenessPassed(false)
+    resetLivenessState()
+    startLivenessCheck()
+  }
 
   const verifySession = async () => {
     if (!sessionCode.trim()) {
@@ -489,6 +545,112 @@ export default function MarkAttendancePage() {
             </div>
           )}
 
+          {/* Liveness Detection Step */}
+          {step === "liveness" && session && (
+            <div className="space-y-4">
+              {/* Session Info */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
+                <p className="font-semibold text-gray-900">
+                  {session.courses?.code} - {session.courses?.title}
+                </p>
+              </div>
+
+              {/* Liveness Challenge Card */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                    <Eye className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-900">Liveness Check</p>
+                    <p className="text-xs text-amber-700">Prove you&apos;re a real person</p>
+                  </div>
+                </div>
+                
+                {livenessChallenge && (
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-amber-200">
+                    <p className="text-center font-medium text-gray-900">
+                      {getChallengeInstruction(livenessChallenge)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover scale-x-[-1]"
+                />
+                
+                {/* Face guide overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className={`w-48 h-60 border-2 rounded-[100px] transition-colors duration-300 ${
+                    livenessPassed ? 'border-emerald-400 shadow-lg shadow-emerald-400/30' : 'border-amber-400 shadow-lg shadow-amber-400/30'
+                  }`} />
+                </div>
+                
+                {/* Progress indicator */}
+                {livenessChallenge && !livenessPassed && (
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="bg-black/50 rounded-full p-1">
+                      <div 
+                        className="h-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-100"
+                        style={{ width: `${livenessProgress * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-center text-white text-xs mt-2">
+                      {Math.round(livenessProgress * 100)}% - Analyzing...
+                    </p>
+                  </div>
+                )}
+                
+                {/* Success indicator */}
+                {livenessPassed && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <div className="bg-emerald-500 rounded-full p-4">
+                      <CheckCircle className="w-12 h-12 text-white" />
+                    </div>
+                  </div>
+                )}
+                
+                {!cameraReady && !error && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
+              
+              <canvas ref={canvasRef} className="hidden" />
+              
+              {error && (
+                <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {error && (
+                <Button 
+                  onClick={retryLivenessCheck}
+                  className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-amber-500 to-orange-500"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              )}
+
+              {!livenessChallenge && !error && (
+                <p className="text-center text-sm text-gray-500">
+                  Preparing liveness check...
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Face Verification Step */}
           {step === "verify" && session && (
             <div className="space-y-4">
@@ -603,6 +765,17 @@ export default function MarkAttendancePage() {
                       <ShieldCheck className="w-5 h-5 text-emerald-600" />
                       <span className="font-medium text-emerald-900">
                         Face Match: {verificationResult.confidence}% confidence
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {livenessPassed && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <Eye className="w-5 h-5 text-amber-600" />
+                      <span className="font-medium text-amber-900">
+                        Liveness Verified ✓
                       </span>
                     </div>
                   </div>
