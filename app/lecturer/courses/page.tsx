@@ -8,7 +8,8 @@ import {
   Users,
   Clock,
   ArrowRight,
-  Loader2
+  Loader2,
+  BarChart3
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import toast from "react-hot-toast"
+import { CourseSummaryReportButton } from "@/components/lecturer/CourseSummaryReportButton"
 
 export default function LecturerCoursesPage() {
   const [courses, setCourses] = useState<any[]>([])
@@ -29,6 +31,17 @@ export default function LecturerCoursesPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      // Get user details for lecturer name
+      const { data: userData } = await supabase
+        .from('users')
+        .select('first_name, last_name, title')
+        .eq('id', user.id)
+        .single()
+
+      const lecturerName = userData 
+        ? `${userData.title || ''} ${userData.first_name} ${userData.last_name}`.trim()
+        : 'Unknown'
 
       const { data, error } = await supabase
         .from('courses')
@@ -53,7 +66,8 @@ export default function LecturerCoursesPage() {
           studentCount: c.course_enrollments?.[0]?.count || 0,
           sessionCount: sessions.length,
           activeSessionId: activeSession?.id,
-          avgAttendance: avgAtt
+          avgAttendance: avgAtt,
+          lecturerName
         }
       })
 
@@ -134,25 +148,33 @@ export default function LecturerCoursesPage() {
                   </Badge>
                 </div>
 
-                <div className="flex gap-2 pt-4">
-                  <Link href={`/lecturer/courses/${course.id}`} className="flex-1">
-                    <Button variant="outline" className="w-full">
-                      Manage
-                    </Button>
-                  </Link>
-                  {course.activeSessionId ? (
-                    <Link href={`/lecturer/sessions/${course.activeSessionId}`} className="flex-1">
-                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                        Active
+                <div className="space-y-3 pt-4">
+                  <div className="flex gap-2">
+                    <Link href={`/lecturer/courses/${course.id}`} className="flex-1">
+                      <Button variant="outline" className="w-full">
+                        Manage
                       </Button>
                     </Link>
-                  ) : (
-                    <Link href={`/lecturer/sessions/new?courseId=${course.id}`} className="flex-1">
-                      <Button className="w-full">
-                        Start Session
-                      </Button>
-                    </Link>
-                  )}
+                    {course.activeSessionId ? (
+                      <Link href={`/lecturer/sessions/${course.activeSessionId}`} className="flex-1">
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                          Active
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href={`/lecturer/sessions/new?courseId=${course.id}`} className="flex-1">
+                        <Button className="w-full">
+                          Start Session
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                  <CourseSummaryReportButton
+                    courseId={course.id}
+                    courseCode={course.code}
+                    courseTitle={course.title}
+                    lecturerName={course.lecturerName}
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "AttendEase - Face-Verified Attendance | TASUED",
   description: "Simple, secure face-verified attendance system for Tai Solarin University of Education. No more proxy signing.",
   keywords: ["attendance", "TASUED", "university", "education", "biometric", "face verification"],
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

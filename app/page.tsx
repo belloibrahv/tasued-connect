@@ -168,7 +168,7 @@ export default function HomePage() {
                     </Button>
                   </Link>
                   <Link href="#how-it-works" className="w-full sm:w-auto">
-                    <Button size="lg" variant="outline" className="w-full px-8 h-12 rounded-full font-semibold border-white/30 text-white hover:bg-white/10">
+                    <Button size="lg" variant="outline" className="w-full px-8 h-12 rounded-full font-semibold border-white/30 text-white hover:bg-transparent">
                       Learn More
                     </Button>
                   </Link>
@@ -451,7 +451,7 @@ export default function HomePage() {
                     </div>
                     <div>
                       <p className="text-gray-300 text-sm">Academic Session</p>
-                      <p className="text-white font-semibold">2024/2025</p>
+                      <p className="text-white font-semibold">2025/2026</p>
                     </div>
                   </div>
                 </div>
@@ -494,8 +494,14 @@ export default function HomePage() {
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white">
-          <div className="container mx-auto px-4">
+        <section className="w-full py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+            <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          </div>
+
+          <div className="relative z-10 container mx-auto px-4">
             <div className="text-center mb-12 md:mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Why FaceCheck?</h2>
               <p className="text-gray-600 text-lg">Built with modern technology and best practices</p>
@@ -503,16 +509,74 @@ export default function HomePage() {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { title: "Fast", description: "Verify attendance in under 1 second" },
-                { title: "Accurate", description: "99.8% facial recognition accuracy" },
-                { title: "Secure", description: "Enterprise-grade encryption" },
-                { title: "Reliable", description: "99.9% uptime guarantee" },
+                {
+                  title: "Lightning Fast",
+                  description: "Verify attendance in under 1 second",
+                  icon: "⚡",
+                  gradient: "from-yellow-400 to-orange-500"
+                },
+                {
+                  title: "Ultra Accurate",
+                  description: "99.8% facial recognition accuracy",
+                  icon: "🎯",
+                  gradient: "from-blue-400 to-cyan-500"
+                },
+                {
+                  title: "Military Grade",
+                  description: "Enterprise-grade encryption",
+                  icon: "🔒",
+                  gradient: "from-emerald-400 to-teal-500"
+                },
+                {
+                  title: "Always Available",
+                  description: "99.9% uptime guarantee",
+                  icon: "🔄",
+                  gradient: "from-purple-400 to-fuchsia-500"
+                },
               ].map((feature, i) => (
-                <div key={i} className="p-6 bg-white rounded-xl border border-gray-200 hover:shadow-lg transition-shadow">
-                  <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm">{feature.description}</p>
+                <div
+                  key={i}
+                  className="group relative p-6 bg-white rounded-2xl border border-gray-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden"
+                >
+                  {/* Animated gradient background on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+
+                  {/* Animated icon container */}
+                  <div className="relative z-10">
+                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 text-white text-xl transition-transform duration-300 group-hover:scale-110`}>
+                      {feature.icon}
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-2 text-lg">{feature.title}</h3>
+                    <p className="text-gray-600">{feature.description}</p>
+
+                    {/* Animated detail line */}
+                    <div className="mt-4 h-1 w-1/2 bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </div>
+
+                  {/* Animated corner accent */}
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-purple-500/10 to-transparent rounded-bl-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
               ))}
+            </div>
+
+            {/* Animated stats bar */}
+            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900 animate-pulse">99%<span className="text-sm">+</span></div>
+                <div className="text-xs text-gray-500">Accuracy</div>
+              </div>
+              <div className="text-center p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900 animate-pulse">&lt;1s</div>
+                <div className="text-xs text-gray-500">Response Time</div>
+              </div>
+              <div className="text-center p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900 animate-pulse">0</div>
+                <div className="text-xs text-gray-500">Proxy Cases</div>
+              </div>
+              <div className="text-center p-4 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200">
+                <div className="text-2xl font-bold text-gray-900 animate-pulse">24/7</div>
+                <div className="text-xs text-gray-500">Availability</div>
+              </div>
             </div>
           </div>
         </section>

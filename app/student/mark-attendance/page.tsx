@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
-import { Camera, CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck, MapPin, Navigation, Eye } from "lucide-react"
+import { useState, useRef, useCallback, useEffect, Suspense } from "react"
+import { CheckCircle, ArrowLeft, Loader2, XCircle, Scan, Hash, AlertCircle, ShieldCheck, MapPin, Navigation, Eye, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
   loadModels,
@@ -30,9 +30,25 @@ import {
 
 type Step = "code" | "loading-models" | "location" | "liveness" | "verify" | "verifying" | "success" | "failed"
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function MarkAttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+      </div>
+    }>
+      <MarkAttendanceContent />
+    </Suspense>
+  )
+}
+
+function MarkAttendanceContent() {
+  const searchParams = useSearchParams()
+  const initialCode = searchParams.get('code') || ""
+  
   const [step, setStep] = useState<Step>("code")
-  const [sessionCode, setSessionCode] = useState("")
+  const [sessionCode, setSessionCode] = useState(initialCode)
   const [session, setSession] = useState<any>(null)
   const [isVerifying, setIsVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +60,6 @@ export default function MarkAttendancePage() {
   const [studentLocation, setStudentLocation] = useState<Coordinates | null>(null)
   const [locationResult, setLocationResult] = useState<LocationVerificationResult | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
-  const [requiresLocation, setRequiresLocation] = useState(false)
   const [livenessChallenge, setLivenessChallenge] = useState<LivenessChallenge | null>(null)
   const [livenessProgress, setLivenessProgress] = useState(0)
   const [livenessPassed, setLivenessPassed] = useState(false)
@@ -56,6 +71,13 @@ export default function MarkAttendancePage() {
   
   const supabase = createClient()
   const router = useRouter()
+
+  // Auto-verify if code is provided via URL (from QR scan)
+  useEffect(() => {
+    if (initialCode && step === "code") {
+      verifySession()
+    }
+  }, [initialCode])
 
   // Load models and get enrolled face descriptor
   const initializeVerification = useCallback(async () => {
@@ -250,7 +272,6 @@ export default function MarkAttendancePage() {
       
       // Check if location verification is required
       const hasLocationRequirement = sessionData.location_latitude && sessionData.location_longitude
-      setRequiresLocation(hasLocationRequirement)
       
       if (hasLocationRequirement) {
         // Go to location verification step first
@@ -445,6 +466,25 @@ export default function MarkAttendancePage() {
                     "Continue"
                   )}
                 </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-gray-50 px-2 text-gray-400">or</span>
+                  </div>
+                </div>
+
+                <Link href="/student/scan">
+                  <Button 
+                    variant="outline"
+                    className="w-full h-11 rounded-full font-medium"
+                  >
+                    <QrCode className="w-4 h-4 mr-2" />
+                    Scan QR Code
+                  </Button>
+                </Link>
               </div>
             </div>
           )}

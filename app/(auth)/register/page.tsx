@@ -36,7 +36,7 @@ export default function RegisterPage() {
                 alt="TASUED Logo"
                 width={64}
                 height={64}
-                className="h-16 w-auto bg-white rounded-xl p-2"
+                className="h-16 w-auto rounded-xl p-2"
               />
               <div>
                 <h3 className="text-white font-bold text-xl">TASUED</h3>

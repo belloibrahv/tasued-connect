@@ -1,13 +1,6 @@
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
-
-// Extend jsPDF with autotable types
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF
-  }
-}
+import autoTable from 'jspdf-autotable'
 
 interface AttendanceData {
   matric_number: string
@@ -28,7 +21,7 @@ export const exportToPDF = (data: AttendanceData[], title: string, fileName: str
   const doc = new jsPDF()
 
   doc.setFontSize(18)
-  doc.text("TASUED AttendX - Attendance Report", 14, 22)
+  doc.text("TASUED FaceCheck - Attendance Report", 14, 22)
   doc.setFontSize(11)
   doc.text(`Course/Session: ${title}`, 14, 30)
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 38)
@@ -43,12 +36,12 @@ export const exportToPDF = (data: AttendanceData[], title: string, fileName: str
     item.method
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 45,
     theme: 'grid',
-    headStyles: { fillColor: [4, 120, 87] }, // Primary color variant
+    headStyles: { fillColor: [128, 58, 237] }, // Purple primary color
   })
 
   doc.save(`${fileName}.pdf`)

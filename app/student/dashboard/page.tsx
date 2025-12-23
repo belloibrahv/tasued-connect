@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan } from "lucide-react"
+import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan, QrCode, BookOpen, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 export default function StudentDashboardPage() {
   const [student, setStudent] = useState<any>(null)
   const [recentAttendance, setRecentAttendance] = useState<any[]>([])
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
   const router = useRouter()
@@ -38,6 +39,19 @@ export default function StudentDashboardPage() {
         .limit(5)
 
       setRecentAttendance(attendanceData || [])
+
+      // Fetch enrolled courses with attendance stats
+      const { data: coursesData } = await supabase
+        .from('course_enrollments')
+        .select(`
+          attendance_percentage,
+          courses (id, code, title)
+        `)
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+        .limit(3)
+
+      setEnrolledCourses(coursesData || [])
 
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -121,7 +135,7 @@ export default function StudentDashboardPage() {
                 <div>
                   <h2 className="text-base font-semibold mb-0.5">Mark Attendance</h2>
                   <p className="text-white/70 text-sm">
-                    {faceEnrolled ? "Scan your face to verify" : "Enroll face first"}
+                    {faceEnrolled ? "Enter code or scan QR" : "Enroll face first"}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -130,6 +144,24 @@ export default function StudentDashboardPage() {
               </div>
             </div>
           </Link>
+
+          {/* Quick Scan Button */}
+          {faceEnrolled && (
+            <Link href="/student/scan">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Quick Scan</p>
+                    <p className="text-white/70 text-xs">Scan QR code to mark attendance</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/70" />
+              </div>
+            </Link>
+          )}
 
           {/* Status Card */}
           <div className="bg-white rounded-xl p-4 border border-gray-100">
@@ -151,6 +183,50 @@ export default function StudentDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* My Courses */}
+          {enrolledCourses.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900 text-sm">My Courses</h3>
+                <Link href="/student/courses" className="text-xs text-purple-600 font-medium">
+                  View All
+                </Link>
+              </div>
+              
+              <div className="divide-y divide-gray-50">
+                {enrolledCourses.map((enrollment, i) => (
+                  <Link 
+                    key={i} 
+                    href={`/student/courses/${enrollment.courses?.id}`}
+                    className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {enrollment.courses?.code}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {enrollment.courses?.title}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        enrollment.attendance_percentage >= 75 
+                          ? 'bg-emerald-50 text-emerald-700' 
+                          : 'bg-red-50 text-red-700'
+                      }`}>
+                        {Math.round(enrollment.attendance_percentage || 0)}%
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent Activity */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
