@@ -168,7 +168,7 @@ export default function HomePage() {
                     </Button>
                   </Link>
                   <Link href="#how-it-works" className="w-full sm:w-auto">
-                    <Button size="lg" variant="outline" className="w-full px-8 h-12 rounded-full font-semibold border-white/30 text-white hover:bg-transparent">
+                    <Button size="lg" variant="outline" className="w-full px-8 h-12 rounded-full font-semibold border-white/30 text-white bg-transparent hover:bg-white/10">
                       Learn More
                     </Button>
                   </Link>
