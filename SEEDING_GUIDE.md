@@ -135,6 +135,72 @@ To create an admin:
 
 ---
 
+## Storage Setup (Required for Face Enrollment)
+
+### Create Face Photos Bucket
+
+The face enrollment feature requires a storage bucket. Run this SQL in Supabase SQL Editor:
+
+```sql
+-- Create the face-photos bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'face-photos',
+  'face-photos',
+  true,
+  5242880,  -- 5MB limit
+  ARRAY['image/jpeg', 'image/png', 'image/webp']::text[]
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow users to upload to their own folder
+CREATE POLICY "Users can upload own face photos"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'face-photos' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to update their own photos
+CREATE POLICY "Users can update own face photos"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'face-photos' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+)
+WITH CHECK (
+  bucket_id = 'face-photos' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to delete their own photos
+CREATE POLICY "Users can delete own face photos"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'face-photos' 
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow public read access for profile photos
+CREATE POLICY "Anyone can view face photos"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'face-photos');
+```
+
+**Alternative: Via Supabase Dashboard**
+1. Go to **Storage** → **New Bucket**
+2. Name: `face-photos`
+3. ✅ Check "Public bucket"
+4. Set file size limit: 5MB
+5. Allowed MIME types: `image/jpeg, image/png, image/webp`
+6. Then add the RLS policies via SQL Editor
+
+---
+
 ## Troubleshooting
 
 **"User not found" after login:**
@@ -145,3 +211,12 @@ To create an admin:
 
 **Courses not showing for lecturer:**
 - Make sure `lecturer_id` in courses table matches the lecturer's UUID
+
+**Face enrollment fails with storage error:**
+- Make sure the `face-photos` bucket exists (see Storage Setup above)
+- Verify RLS policies are created
+- Check browser console for specific error messages
+
+**"Bucket not found" error:**
+- Run the storage bucket creation SQL
+- Or create the bucket manually in Supabase Dashboard → Storage

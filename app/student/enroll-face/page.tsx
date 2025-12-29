@@ -175,41 +175,164 @@ export default function EnrollFacePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
       
-      // Convert base64 to blob
-      const response = await fetch(capturedImage)
-      const blob = await response.blob()
-      
-      // Upload to Supabase Storage
-      const fileName = `${user.id}/face-${Date.now()}.jpg`
-      const { error: uploadError } = await supabase.storage
-        .from("face-photos")
-        .upload(fileName, blob, { contentType: "image/jpeg", upsert: true })
-      
-      if (uploadError) throw uploadError
-      
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("face-photos")
-        .getPublicUrl(fileName)
-      
-      // Serialize face descriptor for storage
+      // Serialize face descriptor for storage - this is the critical data
       const serializedDescriptor = serializeDescriptor(faceDescriptor)
       
-      // Update user profile with photo URL and face descriptor
+      let publicUrl: string | null = null
+      
+      // Try to upload photo to storage (optional - face_descriptor is what matters)
+      try {
+        // Convert base64 to blob
+        const response = await fetch(capturedImage)
+        const blob = await response.blob()
+        
+        // Upload to Supabase Storage
+        const fileName = `${user.id}/face-${Date.now()}.jpg`
+        const { error: uploadError } = await supabase.storage
+          .from("face-photos")
+          .upload(fileName, blob, { contentType: "image/jpeg", upsert: true })
+        
+        if (!uploadError) {
+          // Get public URL
+          const { data } = supabase.storage
+            .from("face-photos")
+            .getPublicUrl(fileName)
+          publicUrl = data.publicUrl
+        } else {
+          console.warn("Photo upload failed (non-critical):", uploadError)
+        }
+      } catch (storageErr) {
+        console.warn("Storage error (non-critical):", storageErr)
+        // Continue without photo URL - face_descriptor is what matters
+      }
+      
+      // Update user profile with face descriptor (required) and photo URL (optional)
+      const updateData: any = { 
+        face_descriptor: serializedDescriptor
+      }
+      
+      if (publicUrl) {
+        updateData.profile_photo_url = publicUrl
+      }
+      
+      console.log("Saving face data to database:", {
+        userId: user.id,
+        hasFaceDescriptor: !!serializedDescriptor,
+        hasPhotoUrl: !!publicUrl
+      })
+      
+      // First check if user exists in public.users
+      const { data: existingUser, error: checkError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .single()
+      
+      if (checkError || !existingUser) {
+        console.log("User not found in public.users, creating via API first...")
+        
+        // Create user profile via API (bypasses RLS)
+        const metadata = user.user_metadata || {}
+        const role = metadata.role || 'student'
+        
+        try {
+          const createResponse = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Student',
+              last_name: metadata.last_name || 'User',
+              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: role === 'student' ? (metadata.level || null) : null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+            })
+          })
+          
+          if (!createResponse.ok) {
+            const result = await createResponse.json()
+            console.error("API failed to create user profile:", result.error)
+            // Don't throw - try direct insert as fallback
+          } else {
+            console.log("User profile created via API successfully")
+          }
+        } catch (apiErr) {
+          console.error("API call failed:", apiErr)
+        }
+        
+        // Verify user was created, if not try direct insert
+        const { data: verifyUser } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", user.id)
+          .single()
+        
+        if (!verifyUser) {
+          console.log("API failed, trying direct insert...")
+          const metadata = user.user_metadata || {}
+          const role = metadata.role || 'student'
+          
+          const { error: insertError } = await supabase
+            .from("users")
+            .insert({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Student',
+              last_name: metadata.last_name || 'User',
+              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: role === 'student' ? (metadata.level || null) : null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+              is_active: true,
+              is_email_verified: true
+            })
+          
+          if (insertError) {
+            console.error("Direct insert also failed:", insertError)
+            throw new Error("Could not create user profile. Please run the database migration first.")
+          }
+          console.log("User profile created via direct insert")
+        }
+      }
+      
+      // Update without .single() to avoid coercion errors
       const { error: updateError } = await supabase
         .from("users")
-        .update({ 
-          profile_photo_url: publicUrl,
-          face_descriptor: serializedDescriptor
-        })
+        .update(updateData)
         .eq("id", user.id)
       
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error("Database update error:", updateError)
+        // Check if it's a column doesn't exist error
+        if (updateError.message?.includes('face_descriptor') || updateError.code === '42703') {
+          throw new Error("Database not configured. Please run the SQL migration in Supabase first.")
+        }
+        throw new Error(updateError.message || "Failed to save face data")
+      }
+      
+      // Verify the update worked by fetching the user
+      const { data: verifyData } = await supabase
+        .from("users")
+        .select('id, face_descriptor, profile_photo_url')
+        .eq("id", user.id)
+        .single()
+      
+      console.log("Face enrollment saved successfully:", {
+        id: verifyData?.id,
+        hasFaceDescriptor: !!verifyData?.face_descriptor,
+        hasPhotoUrl: !!verifyData?.profile_photo_url
+      })
       
       setStep("success")
       
     } catch (err: any) {
-      setError(err.message || "Failed to save photo. Please try again.")
+      setError(err.message || "Failed to save face data. Please try again.")
       console.error("Upload error:", err)
     } finally {
       setIsUploading(false)
@@ -482,7 +605,10 @@ export default function EnrollFacePage() {
               </div>
 
               <Button 
-                onClick={() => router.push("/student/dashboard")}
+                onClick={() => {
+                  // Force a hard navigation to refresh the dashboard data
+                  window.location.href = "/student/dashboard"
+                }}
                 className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >
                 Go to Dashboard

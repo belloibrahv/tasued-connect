@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan, QrCode, BookOpen, BarChart3 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan, QrCode, BookOpen } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -23,11 +22,68 @@ export default function StudentDashboardPage() {
         return
       }
 
-      const { data: studentData } = await supabase
+      // Use select('*') to get all columns including face_descriptor
+      let { data: studentData, error: studentError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .single()
+
+      // If user doesn't exist in public.users, create them via API (bypasses RLS)
+      if (studentError || !studentData) {
+        console.log("User not found in public.users, creating via API...")
+        
+        const metadata = user.user_metadata || {}
+        const role = metadata.role || 'student'
+        
+        try {
+          // Use API route which has service role access
+          const response = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Student',
+              last_name: metadata.last_name || 'User',
+              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: role === 'student' ? (metadata.level || null) : null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (response.ok) {
+            console.log("User profile created successfully:", result)
+            // Re-fetch the user data
+            const { data: newStudentData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            studentData = newStudentData
+          } else {
+            console.error("API error creating profile:", result.error)
+          }
+        } catch (apiError) {
+          console.error("Failed to create profile via API:", apiError)
+        }
+      }
+      
+      // Debug: Log all student data to see what columns exist
+      console.log("Full student data:", studentData)
+      console.log("Face enrollment check:", {
+        id: studentData?.id,
+        face_descriptor: studentData?.face_descriptor,
+        profile_photo_url: studentData?.profile_photo_url,
+        hasFaceDescriptor: !!studentData?.face_descriptor,
+        hasProfilePhoto: !!studentData?.profile_photo_url,
+        faceEnrolled: !!studentData?.face_descriptor || !!studentData?.profile_photo_url
+      })
 
       setStudent(studentData)
 
@@ -78,7 +134,9 @@ export default function StudentDashboardPage() {
   }
 
   const firstName = student?.first_name || "Student"
-  const faceEnrolled = !!student?.profile_photo_url
+  // Check for face_descriptor (the actual face data) OR profile_photo_url
+  // face_descriptor is the reliable indicator since it's what's used for verification
+  const faceEnrolled = !!student?.face_descriptor || !!student?.profile_photo_url
 
   return (
     <div className="min-h-screen bg-gray-50">

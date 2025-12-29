@@ -53,15 +53,48 @@ function LoginForm() {
       }
 
       // Get user role to redirect appropriately
-      const { data: userData } = await supabase
+      let { data: userData } = await supabase
         .from('users')
         .select('role')
         .eq('id', authData.user.id)
         .single()
 
+      // If user doesn't exist in public.users, create from auth metadata
+      if (!userData && authData.user.user_metadata) {
+        const meta = authData.user.user_metadata
+        const role = meta.role || 'student'
+        
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: authData.user.email,
+            role: role,
+            first_name: meta.first_name || '',
+            last_name: meta.last_name || '',
+            matric_number: role === 'student' ? (meta.matric_number || `TEMP-${authData.user.id.substring(0, 8)}`) : null,
+            staff_id: role === 'lecturer' ? (meta.staff_id || `STF-${authData.user.id.substring(0, 8)}`) : null,
+            department: meta.department || null,
+            level: meta.level || null,
+            title: meta.title || null,
+            is_active: true,
+            is_email_verified: true,
+          })
+
+        if (!insertError) {
+          userData = { role }
+        } else {
+          console.error('Failed to create user profile on login:', insertError)
+        }
+      }
+
       toast.success("Welcome back!")
       
-      if (userData?.role === 'lecturer') {
+      // Redirect based on user role
+      const role = userData?.role
+      if (role === 'admin' || role === 'hod') {
+        router.push("/admin/dashboard")
+      } else if (role === 'lecturer') {
         router.push("/lecturer/dashboard")
       } else {
         router.push("/student/dashboard")

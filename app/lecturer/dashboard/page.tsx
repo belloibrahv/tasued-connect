@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { Users, Plus, Clock, CheckCircle, Loader2, LogOut, Scan, Copy, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -29,12 +28,61 @@ export default function LecturerDashboardPage() {
         return
       }
 
+      // First try to get lecturer data
+      let { data: lecturerData, error: lecturerError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      // If user doesn't exist in public.users, create them via API (bypasses RLS)
+      if (lecturerError || !lecturerData) {
+        console.log("User not found in public.users, creating via API...")
+        
+        const metadata = user.user_metadata || {}
+        const role = metadata.role || 'lecturer'
+        
+        try {
+          const response = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Lecturer',
+              last_name: metadata.last_name || 'User',
+              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: role === 'student' ? (metadata.level || null) : null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (response.ok) {
+            console.log("User profile created successfully:", result)
+            // Re-fetch the user data
+            const { data: newLecturerData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            lecturerData = newLecturerData
+          } else {
+            console.error("API error creating profile:", result.error)
+          }
+        } catch (apiError) {
+          console.error("Failed to create profile via API:", apiError)
+        }
+      }
+
       const [
-        { data: lecturerData },
         { data: coursesData },
         { data: sessionData }
       ] = await Promise.all([
-        supabase.from('users').select('*').eq('id', user.id).single(),
         supabase.from('courses').select('*').eq('lecturer_id', user.id),
         supabase.from('lecture_sessions')
           .select('*, courses(code, title)')
@@ -78,16 +126,28 @@ export default function LecturerDashboardPage() {
       const code = generateCode()
       const now = new Date()
       
+      // Set code expiration to 2 hours from now
+      const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+      
+      // Get enrolled students count for this course
+      const { count: enrolledCount } = await supabase
+        .from('course_enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', selectedCourse)
+        .eq('status', 'active')
+      
       const { data, error } = await supabase
         .from('lecture_sessions')
         .insert({
           course_id: selectedCourse,
           lecturer_id: user.id,
           attendance_code: code,
+          code_expires_at: expiresAt.toISOString(),
           session_date: now.toISOString().split('T')[0],
           start_time: now.toTimeString().split(' ')[0],
           status: 'active',
-          started_at: now.toISOString()
+          started_at: now.toISOString(),
+          total_enrolled: enrolledCount || 0
         })
         .select('*, courses(code, title)')
         .single()
@@ -262,14 +322,17 @@ export default function LecturerDashboardPage() {
 
           {/* Courses List */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-50">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-sm">Your Courses</h3>
+              <Link href="/lecturer/courses" className="text-xs text-purple-600 font-medium">
+                Manage
+              </Link>
             </div>
             
             {courses.length > 0 ? (
               <div className="divide-y divide-gray-50">
                 {courses.map((course) => (
-                  <div key={course.id} className="px-4 py-3 flex items-center gap-3">
+                  <Link key={course.id} href={`/lecturer/courses/${course.id}`} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
                     <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                       <span className="text-xs font-bold text-gray-500">
                         {course.code.substring(0, 3)}
@@ -279,12 +342,18 @@ export default function LecturerDashboardPage() {
                       <p className="text-sm font-medium text-gray-900">{course.code}</p>
                       <p className="text-xs text-gray-400 truncate">{course.title}</p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (
               <div className="px-4 py-8 text-center">
-                <p className="text-sm text-gray-500">No courses assigned</p>
+                <p className="text-sm text-gray-500 mb-3">No courses assigned</p>
+                <Link href="/lecturer/courses/claim">
+                  <Button variant="outline" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Claim or Create Course
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
@@ -310,23 +379,35 @@ export default function LecturerDashboardPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select Course
               </label>
-              <select
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="w-full h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-              >
-                <option value="">Choose a course...</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.code} - {course.title}
-                  </option>
-                ))}
-              </select>
+              {courses.length > 0 ? (
+                <select
+                  value={selectedCourse}
+                  onChange={(e) => setSelectedCourse(e.target.value)}
+                  className="w-full h-11 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                >
+                  <option value="">Choose a course...</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.code} - {course.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-3">You haven&apos;t created any courses yet</p>
+                  <Link href="/lecturer/courses/new">
+                    <Button variant="outline" size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Course
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
             
             <Button 
               onClick={startSession}
-              disabled={!selectedCourse || isCreating}
+              disabled={!selectedCourse || isCreating || courses.length === 0}
               className="w-full h-11 rounded-full font-medium"
             >
               {isCreating ? (

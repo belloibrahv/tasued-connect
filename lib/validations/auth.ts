@@ -13,8 +13,7 @@ export const registerSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
   lastName: z.string().min(2, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 
   // Student specific
@@ -25,14 +24,6 @@ export const registerSchema = z.object({
   // Lecturer specific
   staffId: z.string().optional(),
   title: z.string().optional(),
-  officeLocation: z.string().optional(),
-
-  // Security
-  securityQuestion: z.string().min(1, "Please select a security question"),
-  securityAnswer: z.string().min(1, "Please answer the security question"),
-
-  // Terms
-  terms: z.boolean().refine((val) => val === true, "You must accept the terms"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -41,7 +32,7 @@ export const registerSchema = z.object({
     if (!data.matricNumber || data.matricNumber.trim().length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Official Matric Number is required for student identification",
+        message: "Matric Number is required",
         path: ["matricNumber"],
       })
     }
@@ -55,7 +46,7 @@ export const registerSchema = z.object({
     if (!data.level || data.level === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Current Level is required",
+        message: "Level is required",
         path: ["level"],
       })
     }
@@ -65,14 +56,14 @@ export const registerSchema = z.object({
     if (!data.staffId || data.staffId.trim().length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Official Staff ID is required for lecturer identification",
+        message: "Staff ID is required",
         path: ["staffId"],
       })
     }
     if (!data.title || data.title === "") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Academic Title is required",
+        message: "Title is required",
         path: ["title"],
       })
     }

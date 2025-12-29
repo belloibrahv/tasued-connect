@@ -9,6 +9,15 @@ export interface Coordinates {
   accuracy?: number
 }
 
+export interface VenueConfig {
+  name: string
+  latitude: number
+  longitude: number
+  radius?: number // Optional custom radius for this venue
+  building?: string
+  floor?: string
+}
+
 export interface LocationVerificationResult {
   isWithinRange: boolean
   distance: number // in meters
@@ -125,31 +134,174 @@ export function isGeolocationAvailable(): boolean {
 }
 
 /**
- * TASUED Campus Locations (predefined venues)
- * These can be expanded or moved to database
+ * TASUED Campus Venues Configuration
+ * 
+ * NOTE: These are PLACEHOLDER coordinates and should be updated with actual GPS coordinates.
+ * To get accurate coordinates:
+ * 1. Visit each venue with a smartphone
+ * 2. Use Google Maps or a GPS app to get the exact coordinates
+ * 3. Update the values below
+ * 
+ * The coordinates below are approximate for TASUED main campus area.
+ * Actual venue coordinates will vary based on specific building locations.
+ * 
+ * TASUED Main Campus approximate center: 6.8167°N, 3.9333°E
  */
-export const TASUED_VENUES: Record<string, Coordinates> = {
-  // Main Campus Buildings
-  'CSC Lab 1': { latitude: 6.8167, longitude: 3.9333 },
-  'CSC Lab 2': { latitude: 6.8168, longitude: 3.9334 },
-  'Science Building': { latitude: 6.8165, longitude: 3.9330 },
-  'Main Auditorium': { latitude: 6.8170, longitude: 3.9340 },
-  'Faculty of Science': { latitude: 6.8166, longitude: 3.9332 },
-  'Lecture Hall A': { latitude: 6.8169, longitude: 3.9335 },
-  'Lecture Hall B': { latitude: 6.8171, longitude: 3.9337 },
+export const TASUED_VENUES: Record<string, VenueConfig> = {
+  // Computer Science Department
+  'CSC Lab 1': { 
+    name: 'CSC Lab 1',
+    latitude: 6.8167, 
+    longitude: 3.9333,
+    building: 'Computer Science Building',
+    floor: 'Ground Floor'
+  },
+  'CSC Lab 2': { 
+    name: 'CSC Lab 2',
+    latitude: 6.8168, 
+    longitude: 3.9334,
+    building: 'Computer Science Building',
+    floor: 'First Floor'
+  },
+  
+  // Science Faculty Buildings
+  'Science Building': { 
+    name: 'Science Building',
+    latitude: 6.8165, 
+    longitude: 3.9330,
+    building: 'Faculty of Science'
+  },
+  'Faculty of Science': { 
+    name: 'Faculty of Science',
+    latitude: 6.8166, 
+    longitude: 3.9332,
+    building: 'Faculty of Science Main'
+  },
+  
+  // Lecture Halls
+  'Main Auditorium': { 
+    name: 'Main Auditorium',
+    latitude: 6.8170, 
+    longitude: 3.9340,
+    building: 'Central Admin',
+    radius: 150 // Larger radius for auditorium
+  },
+  'Lecture Hall A': { 
+    name: 'Lecture Hall A',
+    latitude: 6.8169, 
+    longitude: 3.9335,
+    building: 'Lecture Complex'
+  },
+  'Lecture Hall B': { 
+    name: 'Lecture Hall B',
+    latitude: 6.8171, 
+    longitude: 3.9337,
+    building: 'Lecture Complex'
+  },
+  
   // Add more venues as needed
 }
 
+// Mutable venues store for runtime updates
+let customVenues: Record<string, VenueConfig> = {}
+
 /**
- * Get venue coordinates by name
+ * Get venue coordinates by name with fallback to session coordinates
+ * Priority: Custom venues > Default venues > Session coordinates > null
+ * 
+ * @param venueName - Name of the venue to look up
+ * @param sessionCoords - Optional session-specific coordinates as fallback
+ * @returns Coordinates or null if not found
+ */
+export function getVenueCoordinatesWithFallback(
+  venueName: string,
+  sessionCoords?: { latitude: number; longitude: number }
+): Coordinates | null {
+  // Check custom venues first
+  if (customVenues[venueName]) {
+    return {
+      latitude: customVenues[venueName].latitude,
+      longitude: customVenues[venueName].longitude
+    }
+  }
+  
+  // Check default venues
+  if (TASUED_VENUES[venueName]) {
+    return {
+      latitude: TASUED_VENUES[venueName].latitude,
+      longitude: TASUED_VENUES[venueName].longitude
+    }
+  }
+  
+  // Fall back to session-specific coordinates
+  if (sessionCoords?.latitude && sessionCoords?.longitude) {
+    return {
+      latitude: sessionCoords.latitude,
+      longitude: sessionCoords.longitude
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Get venue coordinates by name (legacy function for backward compatibility)
  */
 export function getVenueCoordinates(venueName: string): Coordinates | null {
-  return TASUED_VENUES[venueName] || null
+  const venue = customVenues[venueName] || TASUED_VENUES[venueName]
+  if (!venue) return null
+  
+  return {
+    latitude: venue.latitude,
+    longitude: venue.longitude
+  }
+}
+
+/**
+ * Get full venue configuration including optional radius
+ */
+export function getVenueConfig(venueName: string): VenueConfig | null {
+  return customVenues[venueName] || TASUED_VENUES[venueName] || null
 }
 
 /**
  * Get list of available venues
  */
 export function getAvailableVenues(): string[] {
-  return Object.keys(TASUED_VENUES)
+  const defaultVenues = Object.keys(TASUED_VENUES)
+  const custom = Object.keys(customVenues)
+  return Array.from(new Set([...defaultVenues, ...custom]))
+}
+
+/**
+ * Add or update a custom venue at runtime
+ * This allows administrators to add venues without code changes
+ */
+export function addCustomVenue(venue: VenueConfig): void {
+  customVenues[venue.name] = venue
+}
+
+/**
+ * Remove a custom venue
+ */
+export function removeCustomVenue(venueName: string): boolean {
+  if (customVenues[venueName]) {
+    delete customVenues[venueName]
+    return true
+  }
+  return false
+}
+
+/**
+ * Clear all custom venues
+ */
+export function clearCustomVenues(): void {
+  customVenues = {}
+}
+
+/**
+ * Get all venues (both default and custom)
+ */
+export function getAllVenues(): Record<string, VenueConfig> {
+  return { ...TASUED_VENUES, ...customVenues }
 }

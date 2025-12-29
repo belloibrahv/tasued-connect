@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client"
 import { CourseCard } from "@/components/student/CourseCard"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, Plus } from "lucide-react"
+import Link from "next/link"
 
 export default function CoursesPage() {
   const [enrollments, setEnrollments] = useState<any[]>([])
@@ -68,14 +69,21 @@ export default function CoursesPage() {
             Manage and track your attendance for all registered courses.
           </p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search courses..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Link href="/student/courses/enroll">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Enroll
+            </Button>
+          </Link>
         </div>
       </div>
 

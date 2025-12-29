@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Html5QrcodeScanner } from "html5-qrcode"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw } from "lucide-react"
@@ -11,53 +11,83 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ onScanSuccess, onScanFailure }: QRScannerProps) {
-  const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null)
   const [isScanning, setIsScanning] = useState(true)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [scannerKey, setScannerKey] = useState(0) // Key for forcing remount
 
-  useEffect(() => {
-    // Initialize scanner
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader",
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true
-      },
-      /* verbose= */ false
-    )
+  // Initialize scanner
+  const initializeScanner = useCallback(() => {
+    setIsInitializing(true)
+    
+    // Small delay to ensure DOM element exists
+    const timeoutId = setTimeout(() => {
+      const html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader",
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          showTorchButtonIfSupported: true
+        },
+        /* verbose= */ false
+      )
 
-    html5QrcodeScanner.render(
-      (decodedText) => {
-        // Success callback
-        html5QrcodeScanner.clear()
-        setIsScanning(false)
-        onScanSuccess(decodedText)
-      },
-      (errorMessage) => {
-        // Failure callback
-        if (onScanFailure) onScanFailure(errorMessage)
-      }
-    )
+      html5QrcodeScanner.render(
+        (decodedText) => {
+          // Success callback - clear scanner first
+          html5QrcodeScanner.clear().then(() => {
+            setIsScanning(false)
+            onScanSuccess(decodedText)
+          }).catch(console.error)
+        },
+        (errorMessage) => {
+          // Failure callback (called frequently during scanning)
+          if (onScanFailure) onScanFailure(errorMessage)
+        }
+      )
 
-    setScanner(html5QrcodeScanner)
+      setIsInitializing(false)
 
-    return () => {
-      if (html5QrcodeScanner) {
+      // Cleanup function
+      return () => {
         html5QrcodeScanner.clear().catch(console.error)
       }
-    }
+    }, 100)
+
+    return () => clearTimeout(timeoutId)
   }, [onScanSuccess, onScanFailure])
 
-  const handleReset = () => {
-    window.location.reload() // Simplest way to reset scanner for now
-  }
+  // Initialize on mount and when scannerKey changes
+  useEffect(() => {
+    const cleanup = initializeScanner()
+    return cleanup
+  }, [scannerKey, initializeScanner])
+
+  // Handle reset - reinitialize without page reload
+  const handleReset = useCallback(() => {
+    setIsScanning(true)
+    setIsInitializing(true)
+    // Increment key to force remount of scanner element
+    setScannerKey(prev => prev + 1)
+  }, [])
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div id="reader" className="w-full overflow-hidden rounded-lg border-2 border-primary/20 bg-gray-50"></div>
+      {/* Scanner container with key for forced remount */}
+      <div 
+        key={scannerKey}
+        id="reader" 
+        className="w-full overflow-hidden rounded-lg border-2 border-primary/20 bg-gray-50"
+      />
 
-      {!isScanning && (
+      {isInitializing && (
+        <div className="mt-4 text-center">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground mt-2">Initializing camera...</p>
+        </div>
+      )}
+
+      {!isScanning && !isInitializing && (
         <div className="mt-4 text-center">
           <Button onClick={handleReset} variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -66,9 +96,11 @@ export function QRScanner({ onScanSuccess, onScanFailure }: QRScannerProps) {
         </div>
       )}
 
-      <p className="text-center text-sm text-muted-foreground mt-4">
-        Position the QR code within the frame to scan.
-      </p>
+      {isScanning && !isInitializing && (
+        <p className="text-center text-sm text-muted-foreground mt-4">
+          Position the QR code within the frame to scan.
+        </p>
+      )}
     </div>
   )
 }

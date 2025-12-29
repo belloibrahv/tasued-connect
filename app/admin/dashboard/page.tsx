@@ -39,37 +39,53 @@ export default function AdminDashboardPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data: metrics } = await supabase.from('system_metrics').select('id, value')
-      const getMetric = (id: string) => Number(metrics?.find(m => m.id === id)?.value || 0)
-
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // Fetch all stats in parallel using direct table counts
       const [
         { data: adminData },
-        { data: activityData },
-        { data: enrollmentData }
+        { count: usersCount, error: usersError },
+        { count: coursesCount, error: coursesError },
+        { count: activeSessionsCount, error: sessionsError },
+        { data: enrollmentData },
+        { data: activityData }
       ] = await Promise.all([
         supabase.from('users').select('*').eq('id', user.id).single(),
-        supabase.from('attendance_records').select('*, users(first_name, last_name, matric_number), courses(code)').order('marked_at', { ascending: false }).limit(5),
-        supabase.from('course_enrollments').select('attendance_percentage')
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('lecture_sessions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('course_enrollments').select('attendance_percentage'),
+        supabase.from('attendance_records').select('*, users(first_name, last_name, matric_number), courses(code)').order('marked_at', { ascending: false }).limit(5)
       ])
 
-      if (enrollmentData) {
-        const avg = enrollmentData.length ? Math.round(enrollmentData.reduce((acc, curr) => acc + Number(curr.attendance_percentage), 0) / enrollmentData.length) : 0
-        setStats({
-          totalUsers: getMetric('total_users'),
-          activeSessions: getMetric('active_sessions'),
-          totalCourses: getMetric('total_courses'),
-          avgAttendance: avg
-        })
+      // Calculate average attendance with error handling
+      let avgAttendance = 0
+      if (enrollmentData && enrollmentData.length > 0) {
+        avgAttendance = Math.round(
+          enrollmentData.reduce((acc, curr) => acc + Number(curr.attendance_percentage || 0), 0) / enrollmentData.length
+        )
       }
+
+      // Set stats with fallback to 0 on errors
+      setStats({
+        totalUsers: usersError ? 0 : (usersCount || 0),
+        activeSessions: sessionsError ? 0 : (activeSessionsCount || 0),
+        totalCourses: coursesError ? 0 : (coursesCount || 0),
+        avgAttendance
+      })
+
+      // Log any errors for debugging
+      if (usersError) console.error("Error fetching users count:", usersError)
+      if (coursesError) console.error("Error fetching courses count:", coursesError)
+      if (sessionsError) console.error("Error fetching sessions count:", sessionsError)
 
       setAdmin(adminData)
       setLiveActivity(activityData || [])
 
     } catch (error) {
       console.error("Error fetching admin data:", error)
+      toast.error("Failed to load some dashboard data")
     } finally {
       setIsLoading(false)
     }

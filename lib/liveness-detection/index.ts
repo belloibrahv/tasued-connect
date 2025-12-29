@@ -27,6 +27,40 @@ export interface FacePosition {
   height: number
 }
 
+export interface BlinkDetectionResult {
+  detected: boolean
+  confidence: number
+  variance: number
+  threshold: number
+}
+
+/**
+ * Configurable thresholds for liveness detection
+ * These can be adjusted based on camera quality and environment
+ */
+export const LIVENESS_CONFIG = {
+  // Blink detection: variance threshold as percentage of average face height
+  // Lower = more sensitive, Higher = less sensitive
+  // Default 2% works for most cameras, increase to 3-4% for lower quality cameras
+  blinkVarianceThreshold: 0.02,
+  
+  // Movement detection: threshold as percentage of face width
+  // Lower = more sensitive to small movements
+  movementThreshold: 0.15,
+  
+  // Maximum frames to check (at ~30fps)
+  maxAttempts: 60,
+  
+  // Minimum positions needed before detection starts
+  minPositionHistory: 3,
+  
+  // Maximum positions to keep in history
+  maxPositionHistory: 10,
+  
+  // Number of recent positions to use for variance calculation
+  recentPositionsForVariance: 5,
+}
+
 // Track face positions for movement detection
 let previousFacePositions: FacePosition[] = []
 let blinkDetected = false
@@ -94,7 +128,7 @@ export function checkFaceMovement(
   currentPosition: FacePosition,
   direction: 'left' | 'right'
 ): boolean {
-  if (previousFacePositions.length < 5) {
+  if (previousFacePositions.length < LIVENESS_CONFIG.minPositionHistory) {
     previousFacePositions.push(currentPosition)
     return false
   }
@@ -102,8 +136,8 @@ export function checkFaceMovement(
   // Calculate average position from history
   const avgX = previousFacePositions.reduce((sum, p) => sum + p.x, 0) / previousFacePositions.length
   
-  // Check if face moved in the expected direction
-  const movementThreshold = currentPosition.width * 0.15 // 15% of face width
+  // Check if face moved in the expected direction (using configurable threshold)
+  const movementThreshold = currentPosition.width * LIVENESS_CONFIG.movementThreshold
   
   if (direction === 'left' && currentPosition.x < avgX - movementThreshold) {
     movementDetected = true
@@ -115,9 +149,9 @@ export function checkFaceMovement(
     return true
   }
   
-  // Update history (keep last 10 positions)
+  // Update history (keep last N positions)
   previousFacePositions.push(currentPosition)
-  if (previousFacePositions.length > 10) {
+  if (previousFacePositions.length > LIVENESS_CONFIG.maxPositionHistory) {
     previousFacePositions.shift()
   }
   
@@ -127,23 +161,24 @@ export function checkFaceMovement(
 /**
  * Simple blink detection using face size changes
  * When eyes close, the detected face box often changes slightly
+ * Returns detection result with confidence information
  */
 export function checkBlinkPattern(
   currentPosition: FacePosition
 ): boolean {
-  if (previousFacePositions.length < 3) {
+  if (previousFacePositions.length < LIVENESS_CONFIG.minPositionHistory) {
     previousFacePositions.push(currentPosition)
     return false
   }
   
   // Check for height variation (eyes closing causes slight changes)
-  const recentPositions = previousFacePositions.slice(-5)
+  const recentPositions = previousFacePositions.slice(-LIVENESS_CONFIG.recentPositionsForVariance)
   const heights = recentPositions.map(p => p.height)
   const avgHeight = heights.reduce((a, b) => a + b, 0) / heights.length
   const variance = heights.reduce((sum, h) => sum + Math.pow(h - avgHeight, 2), 0) / heights.length
   
-  // If there's noticeable variance, likely a blink occurred
-  const blinkThreshold = avgHeight * 0.02 // 2% variance threshold
+  // If there's noticeable variance, likely a blink occurred (using configurable threshold)
+  const blinkThreshold = avgHeight * LIVENESS_CONFIG.blinkVarianceThreshold
   
   if (variance > blinkThreshold && !blinkDetected) {
     blinkDetected = true
@@ -151,11 +186,50 @@ export function checkBlinkPattern(
   }
   
   previousFacePositions.push(currentPosition)
-  if (previousFacePositions.length > 10) {
+  if (previousFacePositions.length > LIVENESS_CONFIG.maxPositionHistory) {
     previousFacePositions.shift()
   }
   
   return false
+}
+
+/**
+ * Enhanced blink detection with confidence reporting
+ * Useful for debugging and user feedback
+ */
+export function checkBlinkPatternWithConfidence(
+  currentPosition: FacePosition
+): BlinkDetectionResult {
+  if (previousFacePositions.length < LIVENESS_CONFIG.minPositionHistory) {
+    previousFacePositions.push(currentPosition)
+    return { detected: false, confidence: 0, variance: 0, threshold: 0 }
+  }
+  
+  const recentPositions = previousFacePositions.slice(-LIVENESS_CONFIG.recentPositionsForVariance)
+  const heights = recentPositions.map(p => p.height)
+  const avgHeight = heights.reduce((a, b) => a + b, 0) / heights.length
+  const variance = heights.reduce((sum, h) => sum + Math.pow(h - avgHeight, 2), 0) / heights.length
+  
+  const blinkThreshold = avgHeight * LIVENESS_CONFIG.blinkVarianceThreshold
+  const confidence = Math.min((variance / blinkThreshold) * 100, 100)
+  
+  const detected = variance > blinkThreshold && !blinkDetected
+  
+  if (detected) {
+    blinkDetected = true
+  }
+  
+  previousFacePositions.push(currentPosition)
+  if (previousFacePositions.length > LIVENESS_CONFIG.maxPositionHistory) {
+    previousFacePositions.shift()
+  }
+  
+  return {
+    detected,
+    confidence,
+    variance,
+    threshold: blinkThreshold
+  }
 }
 
 /**
@@ -170,7 +244,7 @@ export async function performLivenessCheck(
   await loadModels()
   resetLivenessState()
   
-  const maxAttempts = 60 // 60 frames at ~30fps = 2 seconds
+  const maxAttempts = LIVENESS_CONFIG.maxAttempts
   let attempts = 0
   let challengePassed = false
   
@@ -291,4 +365,22 @@ export async function quickLivenessCheck(
     isLive: passed,
     challenge
   }
+}
+
+/**
+ * Get a different challenge than the one provided
+ * Useful for retry scenarios where the user failed a specific challenge
+ */
+export function getDifferentChallenge(currentChallenge: LivenessChallenge): LivenessChallenge {
+  const allChallenges: LivenessChallenge[] = ['blink', 'turn-left', 'turn-right']
+  const otherChallenges = allChallenges.filter(c => c !== currentChallenge)
+  return otherChallenges[Math.floor(Math.random() * otherChallenges.length)]
+}
+
+/**
+ * Update liveness configuration at runtime
+ * Useful for adjusting sensitivity based on environment
+ */
+export function updateLivenessConfig(updates: Partial<typeof LIVENESS_CONFIG>): void {
+  Object.assign(LIVENESS_CONFIG, updates)
 }

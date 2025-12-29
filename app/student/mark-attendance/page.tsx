@@ -63,6 +63,8 @@ function MarkAttendanceContent() {
   const [livenessChallenge, setLivenessChallenge] = useState<LivenessChallenge | null>(null)
   const [livenessProgress, setLivenessProgress] = useState(0)
   const [livenessPassed, setLivenessPassed] = useState(false)
+  const [codeExpiresAt, setCodeExpiresAt] = useState<Date | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -71,6 +73,48 @@ function MarkAttendanceContent() {
   
   const supabase = createClient()
   const router = useRouter()
+
+  // Helper function to format time remaining
+  const formatTimeRemaining = (expiresAt: Date): string => {
+    const now = new Date()
+    const diff = expiresAt.getTime() - now.getTime()
+    
+    if (diff <= 0) return "Expired"
+    
+    const minutes = Math.floor(diff / 60000)
+    const seconds = Math.floor((diff % 60000) / 1000)
+    
+    if (minutes > 60) {
+      const hours = Math.floor(minutes / 60)
+      const mins = minutes % 60
+      return `${hours}h ${mins}m remaining`
+    }
+    
+    return `${minutes}m ${seconds}s remaining`
+  }
+
+  // Update time remaining countdown
+  useEffect(() => {
+    if (!codeExpiresAt) return
+    
+    const updateTimer = () => {
+      const remaining = formatTimeRemaining(codeExpiresAt)
+      setTimeRemaining(remaining)
+      
+      // Check if expired
+      if (remaining === "Expired") {
+        setError("Session code has expired. Please ask your lecturer for a new code.")
+        setStep("code")
+        setSession(null)
+        setCodeExpiresAt(null)
+      }
+    }
+    
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    
+    return () => clearInterval(interval)
+  }, [codeExpiresAt])
 
   // Auto-verify if code is provided via URL (from QR scan)
   useEffect(() => {
@@ -97,13 +141,24 @@ function MarkAttendanceContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
       
+      console.log("Fetching enrolled face descriptor for user:", user.id)
+      
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("face_descriptor, profile_photo_url")
         .eq("id", user.id)
         .single()
       
-      if (userError) throw userError
+      if (userError) {
+        console.error("Error fetching user data:", userError)
+        throw userError
+      }
+      
+      console.log("User data fetched:", {
+        hasFaceDescriptor: !!userData?.face_descriptor,
+        descriptorType: typeof userData?.face_descriptor,
+        descriptorLength: Array.isArray(userData?.face_descriptor) ? userData.face_descriptor.length : 'not array'
+      })
       
       if (!userData?.face_descriptor) {
         setError("You haven't enrolled your face yet. Please enroll first.")
@@ -114,6 +169,12 @@ function MarkAttendanceContent() {
       
       // Deserialize the stored descriptor
       const descriptor = deserializeDescriptor(userData.face_descriptor)
+      console.log("Deserialized descriptor:", {
+        type: descriptor.constructor.name,
+        length: descriptor.length,
+        sample: Array.from(descriptor.slice(0, 5))
+      })
+      
       setEnrolledDescriptor(descriptor)
       setModelsReady(true)
       
@@ -252,6 +313,17 @@ function MarkAttendanceContent() {
         return
       }
       
+      // Check if session code has expired
+      if (sessionData.code_expires_at) {
+        const expiresAt = new Date(sessionData.code_expires_at)
+        if (expiresAt < new Date()) {
+          setError("Session code has expired. Please ask your lecturer for a new code.")
+          return
+        }
+        // Set expiration time for countdown display
+        setCodeExpiresAt(expiresAt)
+      }
+      
       // Check if already marked
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
@@ -327,46 +399,71 @@ function MarkAttendanceContent() {
   }
 
   const verifyFaceAndMark = async () => {
-    if (!videoRef.current || !canvasRef.current || !session || !enrolledDescriptor) return
+    if (!videoRef.current || !session || !enrolledDescriptor) {
+      console.error("Missing required data:", { 
+        hasVideo: !!videoRef.current, 
+        hasSession: !!session, 
+        hasDescriptor: !!enrolledDescriptor 
+      })
+      setError("Missing required data. Please try again.")
+      return
+    }
     
-    setStep("verifying")
+    // Don't change step yet - we need the video element to capture the frame
     setError(null)
     
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
       
-      // Capture current frame
+      // Capture current frame BEFORE changing step
       const video = videoRef.current
-      const canvas = canvasRef.current
+      
+      // Create a canvas to capture the frame
+      const canvas = document.createElement('canvas')
       const ctx = canvas.getContext("2d")
       
-      if (!ctx) throw new Error("Canvas error")
+      if (!ctx) throw new Error("Canvas context error")
       
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
       ctx.drawImage(video, 0, 0)
+      
+      console.log("Frame captured, dimensions:", {
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height
+      })
+      
+      // NOW change to verifying step (video can be unmounted)
+      setStep("verifying")
+      
+      console.log("Extracting face from captured frame...")
       
       // Extract face descriptor from current frame
       const currentDescriptor = await extractFaceDescriptor(canvas)
       
       if (!currentDescriptor) {
-        setError("No face detected. Please ensure your face is clearly visible.")
+        console.error("No face detected in captured frame")
+        setError("No face detected in the captured image. Please ensure good lighting and try again.")
         setStep("verify")
         return
       }
       
-      // Compare with enrolled face
-      const result = await verifyFaceMatch(enrolledDescriptor, currentDescriptor, 0.5)
+      console.log("Face extracted, comparing with enrolled face...")
+      
+      // Compare with enrolled face - using lower threshold (0.4) for more lenient matching
+      const result = await verifyFaceMatch(enrolledDescriptor, currentDescriptor, 0.4)
       
       console.log("Face verification result:", result)
       
       if (!result.isMatch) {
+        console.log("Face match failed - confidence too low")
         setVerificationResult({ confidence: result.confidence })
         setStep("failed")
         return
       }
       
+      console.log("Face matched! Marking attendance...")
       setVerificationResult({ confidence: result.confidence })
       
       // Mark attendance
@@ -375,7 +472,7 @@ function MarkAttendanceContent() {
         student_id: user.id,
         course_id: session.course_id,
         status: "present",
-        marking_method: "face",
+        marking_method: "face",  // Valid values: 'qr', 'manual', 'system', 'face'
         check_in_time: new Date().toTimeString().split(" ")[0]
       }
       
@@ -388,12 +485,30 @@ function MarkAttendanceContent() {
         attendanceData.location_verified = locationResult.isWithinRange
       }
       
-      const { error: attendanceError } = await supabase
+      console.log("Inserting attendance record:", attendanceData)
+      
+      const { data: insertedRecord, error: attendanceError } = await supabase
         .from("attendance_records")
         .insert(attendanceData)
+        .select()
       
-      if (attendanceError) throw attendanceError
+      if (attendanceError) {
+        console.error("Attendance insert error:", attendanceError)
+        // Check for common errors
+        if (attendanceError.code === '23505') {
+          setError("You've already marked attendance for this session")
+          setStep("code")
+          return
+        }
+        if (attendanceError.code === '42501') {
+          setError("Permission denied. Please contact support.")
+          setStep("code")
+          return
+        }
+        throw new Error(attendanceError.message || "Failed to mark attendance")
+      }
       
+      console.log("Attendance marked successfully:", insertedRecord)
       setStep("success")
       
     } catch (err: any) {
@@ -522,6 +637,11 @@ function MarkAttendanceContent() {
                     {session.venue}
                   </p>
                 )}
+                {timeRemaining && (
+                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                    ⏱ Code expires: {timeRemaining}
+                  </p>
+                )}
               </div>
 
               <div className="text-center">
@@ -594,6 +714,11 @@ function MarkAttendanceContent() {
                 <p className="font-semibold text-gray-900">
                   {session.courses?.code} - {session.courses?.title}
                 </p>
+                {timeRemaining && (
+                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                    ⏱ Code expires: {timeRemaining}
+                  </p>
+                )}
               </div>
 
               {/* Liveness Challenge Card */}
@@ -693,7 +818,10 @@ function MarkAttendanceContent() {
 
           {/* Face Verification Step */}
           {step === "verify" && session && (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-8">
+              {/* Hidden canvas for face capture - must be rendered */}
+              <canvas ref={canvasRef} className="hidden" width={640} height={480} />
+              
               {/* Session Info */}
               <div className="bg-white rounded-xl p-4 border border-gray-200">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
@@ -703,9 +831,24 @@ function MarkAttendanceContent() {
                 {session.topic && (
                   <p className="text-sm text-gray-500 mt-1">{session.topic}</p>
                 )}
+                {timeRemaining && (
+                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                    ⏱ Code expires: {timeRemaining}
+                  </p>
+                )}
               </div>
 
-              <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden">
+              {/* Verification Button - Moved to top for visibility */}
+              <Button 
+                onClick={verifyFaceAndMark}
+                disabled={!cameraReady || !faceDetected}
+                className="w-full h-12 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-50 text-base"
+              >
+                <ShieldCheck className="w-5 h-5 mr-2" />
+                {faceDetected ? "Verify & Mark Present" : "Detecting face..."}
+              </Button>
+
+              <div className="relative aspect-[4/5] bg-black rounded-2xl overflow-hidden">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -737,8 +880,6 @@ function MarkAttendanceContent() {
                 )}
               </div>
               
-              <canvas ref={canvasRef} className="hidden" />
-              
               {error && (
                 <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -748,19 +889,10 @@ function MarkAttendanceContent() {
 
               <p className="text-center text-sm text-gray-500">
                 {faceDetected 
-                  ? "Face detected! Tap verify to mark attendance."
+                  ? "Face detected! Tap the button above to mark attendance."
                   : "Position your face within the oval"
                 }
               </p>
-
-              <Button 
-                onClick={verifyFaceAndMark}
-                disabled={!cameraReady || !faceDetected}
-                className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-50"
-              >
-                <ShieldCheck className="w-4 h-4 mr-2" />
-                Verify & Mark Present
-              </Button>
             </div>
           )}
 

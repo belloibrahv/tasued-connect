@@ -55,7 +55,7 @@ export function RegisterForm() {
   async function onSubmit(data: RegisterInput) {
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -77,8 +77,59 @@ export function RegisterForm() {
         return
       }
 
-      toast.success("Account created! Please check your email to verify.")
-      router.push("/login?verified=false")
+      // Verify the user was created in public.users (trigger should handle this)
+      // If not, create the record via API (uses service role to bypass RLS)
+      if (authData.user) {
+        // Small delay to let the trigger run
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', authData.user.id)
+          .single()
+
+        if (!existingUser) {
+          // Trigger failed - create via API with service role
+          const response = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: authData.user.id,
+              email: data.email,
+              role: data.role,
+              first_name: data.firstName,
+              last_name: data.lastName,
+              matric_number: data.matricNumber,
+              staff_id: data.staffId,
+              department: data.department,
+              level: data.level,
+              title: data.title,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error('Failed to create user profile:', errorData)
+            toast.error('Account created but profile setup failed. Please try logging in.')
+            // Still redirect - the login page will try to create the profile
+            router.push("/login")
+            return
+          }
+        }
+      }
+
+      // Since email confirmation is disabled, user is auto-logged in
+      // Redirect based on role
+      toast.success("Account created successfully!")
+      
+      if (data.role === 'lecturer') {
+        router.push("/lecturer/dashboard")
+      } else if (data.role === 'admin') {
+        router.push("/admin/dashboard")
+      } else {
+        router.push("/student/dashboard")
+      }
     } catch (error) {
       toast.error("Something went wrong. Please try again.")
     } finally {
