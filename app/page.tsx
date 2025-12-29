@@ -6,7 +6,8 @@ import Image from "next/image"
 import { Camera, CheckCircle, UserPlus, ArrowRight, Scan, BookOpen, Users, GraduationCap } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { TeamCarousel } from "@/components/home/TeamCarousel"
+import { MemberMarquee } from "@/components/home/MemberMarquee"
+import { members } from "@/lib/data/members"
 
 // Add animation styles
 const style = `
@@ -103,7 +104,7 @@ export default function HomePage() {
               <p className="text-xs text-gray-500">TASUED CSC 415</p>
             </div>
           </Link>
-          
+
           <nav className="flex items-center gap-2">
             {user ? (
               <Link href="/student/dashboard">
@@ -177,7 +178,7 @@ export default function HomePage() {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mt-12 md:mt-16 pt-12 md:pt-16 border-t border-white/10">
                   <div>
-                    <p className="text-2xl md:text-3xl font-bold text-white">96</p>
+                    <p className="text-2xl md:text-3xl font-bold text-white">{members.length}</p>
                     <p className="text-sm text-gray-300">Students</p>
                   </div>
                   <div>
@@ -402,8 +403,8 @@ export default function HomePage() {
               <div className="space-y-6">
                 {/* TASUED Logo & Department */}
                 <div className="flex items-center gap-4 pb-6 border-b border-white/10">
-                  <Image 
-                    src="https://tasued.edu.ng/web/wp-content/uploads/2023/03/logo3-1.png" 
+                  <Image
+                    src="https://tasued.edu.ng/web/wp-content/uploads/2023/03/logo3-1.png"
                     alt="TASUED Logo"
                     width={64}
                     height={64}
@@ -487,9 +488,9 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <div className="text-center mb-12 md:mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Our Team</h2>
-              <p className="text-gray-600 text-lg">96 talented students from CSC 415 • Net-Centric Computing</p>
+              <p className="text-gray-600 text-lg">{members.length} talented students from CSC 415 • Net-Centric Computing</p>
             </div>
-            <TeamCarousel />
+            <MemberMarquee />
           </div>
         </section>
 
@@ -586,13 +587,13 @@ export default function HomePage() {
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl" />
           </div>
-          
+
           <div className="relative z-10 container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Ready to get started?
             </h2>
             <p className="text-white/90 mb-8 text-lg max-w-2xl mx-auto">
-              Register your face once and mark attendance with a quick scan. Join 96 students already using FaceCheck.
+              Register your face once and mark attendance with a quick scan. Join {members.length} students already using FaceCheck.
             </p>
             <Link href="/register">
               <Button size="lg" className="px-8 h-12 rounded-full font-semibold bg-white text-purple-600 hover:bg-gray-100 hover:shadow-2xl transition-all hover:scale-105">
@@ -642,13 +643,13 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-gray-400">
               © 2025 FaceCheck. CSC 415 • Net-Centric Computing • TASUED
             </p>
             <p className="text-sm text-gray-400">
-              Built by 96 students from the Department of Computer Science
+              Built by {members.length} students from the Department of Computer Science
             </p>
           </div>
         </div>
