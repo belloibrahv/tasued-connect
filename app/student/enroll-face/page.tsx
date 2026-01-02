@@ -39,7 +39,10 @@ export default function EnrollFacePage() {
     setError(null)
     
     try {
+      console.log("Starting model initialization...")
       const loaded = await loadModels()
+      console.log("Models loaded:", loaded)
+      
       if (loaded) {
         setModelsReady(true)
         setStep("capture")
@@ -89,8 +92,13 @@ export default function EnrollFacePage() {
     if (step === "capture" && cameraReady && modelsReady && videoRef.current) {
       detectionIntervalRef.current = setInterval(async () => {
         if (videoRef.current) {
-          const detection = await detectFace(videoRef.current)
-          setFaceDetected(!!detection)
+          try {
+            const detection = await detectFace(videoRef.current)
+            setFaceDetected(!!detection)
+          } catch (err) {
+            console.error("Face detection error:", err)
+            setFaceDetected(false)
+          }
         }
       }, 500)
     }
@@ -124,23 +132,28 @@ export default function EnrollFacePage() {
     
     if (!ctx) return
     
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    
-    // Mirror the image for selfie view
-    ctx.translate(canvas.width, 0)
-    ctx.scale(-1, 1)
-    ctx.drawImage(video, 0, 0)
-    
-    const imageData = canvas.toDataURL("image/jpeg", 0.9)
-    setCapturedImage(imageData)
-    
-    // Extract face descriptor
     try {
-      // Reset transform for face detection
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      
+      // Draw the video frame to canvas (without mirroring for face detection)
       ctx.drawImage(video, 0, 0)
       
+      // Get the image data for display (mirrored for selfie view)
+      const displayCanvas = document.createElement('canvas')
+      displayCanvas.width = video.videoWidth
+      displayCanvas.height = video.videoHeight
+      const displayCtx = displayCanvas.getContext("2d")
+      if (displayCtx) {
+        displayCtx.translate(displayCanvas.width, 0)
+        displayCtx.scale(-1, 1)
+        displayCtx.drawImage(video, 0, 0)
+      }
+      
+      const imageData = displayCanvas.toDataURL("image/jpeg", 0.9)
+      setCapturedImage(imageData)
+      
+      // Extract face descriptor from the non-mirrored canvas
       const descriptor = await extractFaceDescriptor(canvas)
       
       if (!descriptor) {
