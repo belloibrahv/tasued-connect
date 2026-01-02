@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan, QrCode, BookOpen } from "lucide-react"
+import { Camera, CheckCircle, Clock, User, ChevronRight, Loader2, LogOut, Scan, QrCode, BookOpen, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -22,70 +22,19 @@ export default function StudentDashboardPage() {
         return
       }
 
-      // Use select('*') to get all columns including face_descriptor
-      let { data: studentData, error: studentError } = await supabase
+      // Fetch student data - RLS is disabled so this should work
+      const { data: studentData, error: studentError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()  // Use maybeSingle() instead of single() to handle 0 rows gracefully
 
-      // If user doesn't exist in public.users, create them via API (bypasses RLS)
-      if (studentError || !studentData) {
-        console.log("User not found in public.users, creating via API...")
-        
-        const metadata = user.user_metadata || {}
-        const role = metadata.role || 'student'
-        
-        try {
-          // Use API route which has service role access
-          const response = await fetch('/api/create-profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: user.id,
-              email: user.email,
-              role: role,
-              first_name: metadata.first_name || 'Student',
-              last_name: metadata.last_name || 'User',
-              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
-              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
-              department: metadata.department || null,
-              level: role === 'student' ? (metadata.level || null) : null,
-              title: role === 'lecturer' ? (metadata.title || null) : null,
-            })
-          })
-          
-          const result = await response.json()
-          
-          if (response.ok) {
-            console.log("User profile created successfully:", result)
-            // Re-fetch the user data
-            const { data: newStudentData } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', user.id)
-              .single()
-            studentData = newStudentData
-          } else {
-            console.error("API error creating profile:", result.error)
-          }
-        } catch (apiError) {
-          console.error("Failed to create profile via API:", apiError)
-        }
+      if (studentError && studentError.code !== 'PGRST116') {
+        // Only log non-"no rows" errors
+        console.error("Error fetching student data:", studentError)
       }
-      
-      // Debug: Log all student data to see what columns exist
-      console.log("Full student data:", studentData)
-      console.log("Face enrollment check:", {
-        id: studentData?.id,
-        face_descriptor: studentData?.face_descriptor,
-        profile_photo_url: studentData?.profile_photo_url,
-        hasFaceDescriptor: !!studentData?.face_descriptor,
-        hasProfilePhoto: !!studentData?.profile_photo_url,
-        faceEnrolled: !!studentData?.face_descriptor || !!studentData?.profile_photo_url
-      })
 
-      setStudent(studentData)
+      setStudent(studentData || null)
 
       const { data: attendanceData } = await supabase
         .from('attendance_records')
@@ -96,7 +45,6 @@ export default function StudentDashboardPage() {
 
       setRecentAttendance(attendanceData || [])
 
-      // Fetch enrolled courses with attendance stats
       const { data: coursesData } = await supabase
         .from('course_enrollments')
         .select(`
@@ -149,13 +97,25 @@ export default function StudentDashboardPage() {
             </div>
             <span className="font-semibold text-gray-900 text-sm">FaceCheck</span>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                setIsLoading(true)
+                fetchData()
+              }}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
