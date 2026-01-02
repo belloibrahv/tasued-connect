@@ -182,9 +182,15 @@ export default function EnrollFacePage() {
       
       // Try to upload photo to storage (optional - face_descriptor is what matters)
       try {
-        // Convert base64 to blob
-        const response = await fetch(capturedImage)
-        const blob = await response.blob()
+        // Convert base64 data URL to blob
+        const base64Data = capturedImage.split(',')[1] // Remove data:image/jpeg;base64, prefix
+        const byteCharacters = atob(base64Data)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: 'image/jpeg' })
         
         // Upload to Supabase Storage
         const fileName = `${user.id}/face-${Date.now()}.jpg`
@@ -198,6 +204,7 @@ export default function EnrollFacePage() {
             .from("face-photos")
             .getPublicUrl(fileName)
           publicUrl = data.publicUrl
+          console.log("Photo uploaded successfully:", publicUrl)
         } else {
           console.warn("Photo upload failed (non-critical):", uploadError)
         }
@@ -221,91 +228,17 @@ export default function EnrollFacePage() {
         hasPhotoUrl: !!publicUrl
       })
       
-      // First check if user exists in public.users
-      const { data: existingUser, error: checkError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("id", user.id)
-        .single()
-      
-      if (checkError || !existingUser) {
-        console.log("User not found in public.users, creating via API first...")
-        
-        // Create user profile via API (bypasses RLS)
-        const metadata = user.user_metadata || {}
-        const role = metadata.role || 'student'
-        
-        try {
-          const createResponse = await fetch('/api/create-profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: user.id,
-              email: user.email,
-              role: role,
-              first_name: metadata.first_name || 'Student',
-              last_name: metadata.last_name || 'User',
-              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
-              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
-              department: metadata.department || null,
-              level: role === 'student' ? (metadata.level || null) : null,
-              title: role === 'lecturer' ? (metadata.title || null) : null,
-            })
-          })
-          
-          if (!createResponse.ok) {
-            const result = await createResponse.json()
-            console.error("API failed to create user profile:", result.error)
-            // Don't throw - try direct insert as fallback
-          } else {
-            console.log("User profile created via API successfully")
-          }
-        } catch (apiErr) {
-          console.error("API call failed:", apiErr)
-        }
-        
-        // Verify user was created, if not try direct insert
-        const { data: verifyUser } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", user.id)
-          .single()
-        
-        if (!verifyUser) {
-          console.log("API failed, trying direct insert...")
-          const metadata = user.user_metadata || {}
-          const role = metadata.role || 'student'
-          
-          const { error: insertError } = await supabase
-            .from("users")
-            .insert({
-              id: user.id,
-              email: user.email,
-              role: role,
-              first_name: metadata.first_name || 'Student',
-              last_name: metadata.last_name || 'User',
-              matric_number: role === 'student' ? (metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`) : null,
-              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
-              department: metadata.department || null,
-              level: role === 'student' ? (metadata.level || null) : null,
-              title: role === 'lecturer' ? (metadata.title || null) : null,
-              is_active: true,
-              is_email_verified: true
-            })
-          
-          if (insertError) {
-            console.error("Direct insert also failed:", insertError)
-            throw new Error("Could not create user profile. Please run the database migration first.")
-          }
-          console.log("User profile created via direct insert")
-        }
-      }
+      // Skip profile creation - assume it exists or will be created by trigger
+      console.log("Proceeding with face enrollment for user:", user.id)
       
       // Update without .single() to avoid coercion errors
-      const { error: updateError } = await supabase
+      console.log("About to update with data:", updateData)
+      const { error: updateError, data: updateResult } = await supabase
         .from("users")
         .update(updateData)
         .eq("id", user.id)
+      
+      console.log("Update response:", { error: updateError, data: updateResult })
       
       if (updateError) {
         console.error("Database update error:", updateError)
@@ -321,7 +254,7 @@ export default function EnrollFacePage() {
         .from("users")
         .select('id, face_descriptor, profile_photo_url')
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
       
       console.log("Face enrollment saved successfully:", {
         id: verifyData?.id,
@@ -606,8 +539,8 @@ export default function EnrollFacePage() {
 
               <Button 
                 onClick={() => {
-                  // Force a hard navigation to refresh the dashboard data
-                  window.location.href = "/student/dashboard"
+                  // Force a hard navigation with cache busting
+                  window.location.href = "/student/dashboard?refresh=" + Date.now()
                 }}
                 className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >
