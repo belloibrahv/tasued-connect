@@ -48,11 +48,6 @@ export default function LecturerOnboardingPage() {
     resolver: zodResolver(lecturerOnboardingSchema),
     defaultValues: {
       officeLocation: "",
-      officeHours: {
-        day: "Monday",
-        startTime: "09:00",
-        endTime: "17:00",
-      },
       researchInterests: "",
       notificationsEnabled: true,
     },

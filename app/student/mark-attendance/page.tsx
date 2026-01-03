@@ -206,7 +206,7 @@ function MarkAttendanceContent() {
       })
       
       if (!userData?.face_descriptor) {
-        setError("You haven't enrolled your face yet. Please enroll first.")
+        setError("You have not enrolled your face yet. Please enroll first.")
         setStep("code")
         router.push("/student/enroll-face")
         return
@@ -381,7 +381,7 @@ function MarkAttendanceContent() {
         .single()
       
       if (existingRecord) {
-        setError("You've already marked attendance for this session")
+        setError("You have already marked attendance for this session")
         return
       }
       
@@ -541,7 +541,7 @@ function MarkAttendanceContent() {
         console.error("Attendance insert error:", attendanceError)
         // Check for common errors
         if (attendanceError.code === '23505') {
-          setError("You've already marked attendance for this session")
+          setError("You have already marked attendance for this session")
           setStep("code")
           return
         }

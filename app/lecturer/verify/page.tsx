@@ -35,7 +35,7 @@ export default function LecturerVerifyPage() {
         scanner.clear().catch(err => console.error("Scanner clear error:", err))
       }
     }
-  }, [isScanning, scanResult])
+  }, [isScanning, scanResult, onScanSuccess, onScanError])
 
   async function onScanSuccess(decodedText: string) {
     setIsScanning(false)
