@@ -14,12 +14,12 @@ CREATE TABLE lecture_sessions_backup AS SELECT * FROM lecture_sessions;
 CREATE TABLE attendance_records_backup AS SELECT * FROM attendance_records;
 ```
 
-### 2. Execute Database Reset Script
-Run the following script to drop existing tables and recreate them with proper structure:
+### 2. Execute Fixed Database Schema Script
+Run the following script to drop existing tables and recreate them with proper structure that fixes the UUID constraint issues:
 
 ```sql
 -- Execute the complete reset script
-\i DATABASE_RESET.sql
+\i DATABASE_FIXED_SCHEMA.sql
 ```
 
 ### 3. Create Sample Users
@@ -27,7 +27,7 @@ Run the sample users script to create test accounts:
 
 ```sql
 -- Execute the sample users script
-\i DATABASE_CREATE_SAMPLE_USERS.sql
+\i DATABASE_CREATE_SAMPLE_USERS_FIXED.sql
 ```
 
 ### 4. Alternative: Run Combined Fix Script
@@ -98,6 +98,15 @@ If you're experiencing "Database error saving new user" issues:
 2. Verify that the auth triggers are correctly set up (handled by the fix script)
 3. Check that RLS policies are properly configured
 4. Ensure the users table has the correct structure
+
+## Fixing UUID Foreign Key Constraint Issues
+
+If you encounter the error: "insert or update on table \"users\" violates foreign key constraint \"users_id_fkey\"", this means:
+
+1. The users table was incorrectly set up with a foreign key constraint to auth.users
+2. The fix involves removing explicit foreign key constraints and letting Supabase handle the relationship via RLS policies
+3. The new schema uses gen_random_uuid() for proper UUID generation
+4. The fixed scripts handle the relationship correctly without violating constraints
 
 ## Environment Variables Required
 
