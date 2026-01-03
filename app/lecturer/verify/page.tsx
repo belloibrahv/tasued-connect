@@ -17,26 +17,6 @@ export default function LecturerVerifyPage() {
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
-  useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null
-
-    if (isScanning && !scanResult) {
-      scanner = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      )
-
-      scanner.render(onScanSuccess, onScanError)
-    }
-
-    return () => {
-      if (scanner) {
-        scanner.clear().catch(err => console.error("Scanner clear error:", err))
-      }
-    }
-  }, [isScanning, scanResult, onScanSuccess, onScanError])
-
   async function onScanSuccess(decodedText: string) {
     setIsScanning(false)
     setIsLoading(true)
@@ -67,6 +47,26 @@ export default function LecturerVerifyPage() {
   function onScanError(err: any) {
     // We can ignore most scan errors as they occur continuously until successful scan
   }
+
+  useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null
+
+    if (isScanning && !scanResult) {
+      scanner = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      )
+
+      scanner.render(onScanSuccess, onScanError)
+    }
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(err => console.error("Scanner clear error:", err))
+      }
+    }
+  }, [isScanning, scanResult])
 
   const resetScanner = () => {
     setScanResult(null)

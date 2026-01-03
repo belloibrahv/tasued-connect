@@ -117,11 +117,15 @@ function MarkAttendanceContent() {
   }, [codeExpiresAt])
 
   // Auto-verify if code is provided via URL (from QR scan)
-  useEffect(() => {
+  const verifySessionCallback = useCallback(() => {
     if (initialCode && step === "code") {
       verifySession()
     }
-  }, [initialCode])
+  }, [initialCode, step])
+
+  useEffect(() => {
+    verifySessionCallback()
+  }, [verifySessionCallback])
 
   // Load models and get enrolled face descriptor
   const initializeVerification = useCallback(async () => {

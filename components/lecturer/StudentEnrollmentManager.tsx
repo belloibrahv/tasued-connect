@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Loader2, X, Search, UserCheck, UserX, Mail, Download } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -40,21 +40,7 @@ export function StudentEnrollmentManager({
   const [isUpdating, setIsUpdating] = useState(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchEnrollments()
-  }, [courseId])
-
-  useEffect(() => {
-    const filtered = enrollments.filter(
-      (e) =>
-        e.student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.student.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.student.matric_number.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    setFilteredEnrollments(filtered)
-  }, [searchTerm, enrollments])
-
-  const fetchEnrollments = async () => {
+  const fetchEnrollments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("course_enrollments")
@@ -91,7 +77,21 @@ export function StudentEnrollmentManager({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [courseId, supabase])
+
+  useEffect(() => {
+    fetchEnrollments()
+  }, [fetchEnrollments])
+
+  useEffect(() => {
+    const filtered = enrollments.filter(
+      (e) =>
+        e.student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.student.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.student.matric_number.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    setFilteredEnrollments(filtered)
+  }, [searchTerm, enrollments])
 
   const updateEnrollmentStatus = async (
     enrollmentId: string,

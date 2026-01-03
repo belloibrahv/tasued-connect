@@ -77,7 +77,7 @@ export default function AdminSettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [supabase])
+  }, [supabase, settings])
 
   useEffect(() => {
     fetchSettings()
