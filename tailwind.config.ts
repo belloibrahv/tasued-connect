@@ -8,6 +8,44 @@ const config = {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
+  safelist: [
+    // Safelist for dynamic color classes
+    {
+      pattern: /^(bg|text|border|ring)-(primary|secondary|success|warning|error|info)-(50|100|200|300|400|500|600|700|800|900)?$/,
+    },
+    // Safelist for dynamic size classes
+    {
+      pattern: /^(w|h)-(1|2|3|4|5|6|8|10|12|16|20|24|32|40|48|56|64|72|80|96)$/, 
+    },
+    // Safelist for dynamic margin/padding classes
+    {
+      pattern: /^(m|p)(t|b|l|r|x|y)-(0|1|2|3|4|5|6|8|10|12|14|16|20|24|32|40|48|56|64)$/, 
+    },
+    // Safelist for dynamic opacity classes
+    {
+      pattern: /^opacity-(0|5|10|20|25|30|40|50|60|70|75|80|90|95|100)$/, 
+    },
+    // Safelist for dynamic rounded classes
+    {
+      pattern: /^rounded-(sm|md|lg|xl|2xl|3xl|full)$/, 
+    },
+    // Safelist for dynamic shadow classes
+    {
+      pattern: /^shadow-(sm|md|lg|xl|2xl|inner|none)$/, 
+    },
+    // Safelist for dynamic flex/grid classes
+    {
+      pattern: /^(flex|grid|col|row)-(1|2|3|4|5|6|7|8|9|10|11|12)$/, 
+    },
+    // Safelist for dynamic animation classes
+    {
+      pattern: /^animate-/, 
+    },
+    // Safelist for dynamic state classes
+    {
+      pattern: /^(hover|focus|active|group-hover|group-focus):/, 
+    },
+  ],
   prefix: "",
   theme: {
     container: {
