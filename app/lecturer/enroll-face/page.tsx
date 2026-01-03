@@ -15,7 +15,7 @@ import {
 
 type Step = "intro" | "loading-models" | "capture" | "processing" | "confirm" | "success"
 
-export default function EnrollFacePage() {
+export default function LecturerEnrollFacePage() {
   const [step, setStep] = useState<Step>("intro")
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [faceDescriptor, setFaceDescriptor] = useState<Float32Array | null>(null)
@@ -254,7 +254,7 @@ export default function EnrollFacePage() {
         console.log("User profile doesn't exist, creating via API...")
         
         const metadata = user.user_metadata || {}
-        const role = metadata.role || 'student'
+        const role = metadata.role || 'lecturer'
         
         try {
           const response = await fetch('/api/create-profile', {
@@ -266,11 +266,11 @@ export default function EnrollFacePage() {
               role: role,
               first_name: metadata.first_name || 'User',
               last_name: metadata.last_name || 'User',
-              matric_number: metadata.matric_number || null,
-              staff_id: role === 'lecturer' ? (metadata.staff_id || null) : null,
+              matric_number: role === 'student' ? (metadata.matric_number || null) : null,
+              staff_id: metadata.staff_id || null,
               department: metadata.department || null,
-              level: metadata.level || null,
-              title: role === 'lecturer' ? (metadata.title || null) : null,
+              level: role === 'student' ? (metadata.level || null) : null,
+              title: metadata.title || null,
             })
           })
           
@@ -337,7 +337,7 @@ export default function EnrollFacePage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/student/dashboard" className="p-1 -ml-1">
+          <Link href="/lecturer/dashboard" className="p-1 -ml-1">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div className="flex items-center gap-2">
@@ -600,7 +600,7 @@ export default function EnrollFacePage() {
               <Button 
                 onClick={() => {
                   // Force a hard navigation to ensure fresh data
-                  window.location.href = "/student/dashboard";
+                  window.location.href = "/lecturer/dashboard";
                 }}
                 className="w-full h-11 rounded-full font-medium bg-gradient-to-r from-purple-600 to-blue-600"
               >

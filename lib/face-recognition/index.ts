@@ -6,6 +6,9 @@ let faceapi: typeof import('face-api.js') | null = null
 // Track if models are loaded
 let modelsLoaded = false
 
+// Track model loading promise to prevent multiple concurrent loads
+let modelLoadingPromise: Promise<boolean> | null = null
+
 // Model URLs - using jsdelivr CDN for face-api.js models
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model'
 
@@ -34,22 +37,34 @@ async function getFaceApi() {
 export async function loadModels(): Promise<boolean> {
   if (modelsLoaded) return true
   
-  try {
-    const api = await getFaceApi()
-    
-    await Promise.all([
-      api.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      api.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      api.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-    ])
-    
-    modelsLoaded = true
-    console.log('Face recognition models loaded successfully')
-    return true
-  } catch (error) {
-    console.error('Failed to load face recognition models:', error)
-    return false
+  // If already loading, return the existing promise
+  if (modelLoadingPromise) {
+    return modelLoadingPromise
   }
+  
+  modelLoadingPromise = (async () => {
+    try {
+      const api = await getFaceApi()
+      
+      await Promise.all([
+        api.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        api.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        api.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ])
+      
+      modelsLoaded = true
+      console.log('Face recognition models loaded successfully')
+      return true
+    } catch (error) {
+      console.error('Failed to load face recognition models:', error)
+      return false
+    } finally {
+      // Reset the loading promise when complete
+      modelLoadingPromise = null
+    }
+  })()
+  
+  return modelLoadingPromise
 }
 
 /**
@@ -57,6 +72,16 @@ export async function loadModels(): Promise<boolean> {
  */
 export function areModelsLoaded(): boolean {
   return modelsLoaded
+}
+
+/**
+ * Preload models without blocking - call this early in your app lifecycle
+ */
+export async function preloadModels(): Promise<void> {
+  // Start loading models in the background
+  loadModels().catch(error => {
+    console.error('Preloading models failed:', error)
+  })
 }
 
 /**

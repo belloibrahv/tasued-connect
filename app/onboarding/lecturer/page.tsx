@@ -60,19 +60,81 @@ export default function LecturerOnboardingPage() {
 
   useEffect(() => {
     const fetchLecturer = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
-        return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push("/login")
+          return
+        }
+
+        // Try to fetch lecturer data with a timeout
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+        const { data: lecturerData, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+
+        clearTimeout(timeoutId)
+
+        if (error || !lecturerData) {
+          console.error("Failed to fetch lecturer data:", error)
+          // Create the profile if it doesn't exist
+          const { error: insertError } = await supabase
+            .from("users")
+            .insert({
+              id: user.id,
+              email: user.email,
+              role: 'lecturer',
+              first_name: user.user_metadata?.first_name || 'Lecturer',
+              last_name: user.user_metadata?.last_name || 'User',
+              staff_id: user.user_metadata?.staff_id || `TEMP-${user.id.substring(0, 8)}`,
+              department: user.user_metadata?.department || null,
+              title: user.user_metadata?.title || null,
+              is_active: true,
+              is_email_verified: true
+            })
+
+          if (insertError) {
+            console.error("Failed to create lecturer profile:", insertError)
+            // Set a minimal lecturer object to allow onboarding to proceed
+            setLecturer({
+              id: user.id,
+              email: user.email,
+              role: 'lecturer',
+              first_name: user.user_metadata?.first_name || 'Lecturer',
+              last_name: user.user_metadata?.last_name || 'User',
+            })
+            return
+          }
+
+          // Fetch again after creating
+          const { data: newLecturerData } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", user.id)
+            .single()
+          
+          setLecturer(newLecturerData)
+        } else {
+          setLecturer(lecturerData)
+        }
+      } catch (err) {
+        console.error("Error in fetchLecturer:", err)
+        // Still allow onboarding to proceed with minimal data
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setLecturer({
+            id: user.id,
+            email: user.email,
+            role: 'lecturer',
+            first_name: user.user_metadata?.first_name || 'Lecturer',
+            last_name: user.user_metadata?.last_name || 'User',
+          })
+        }
       }
-
-      const { data: lecturerData } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single()
-
-      setLecturer(lecturerData)
     }
 
     fetchLecturer()

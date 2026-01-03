@@ -143,15 +143,60 @@ function MarkAttendanceContent() {
       
       console.log("Fetching enrolled face descriptor for user:", user.id)
       
-      const { data: userData, error: userError } = await supabase
+      let { data: userData, error: userError } = await supabase
         .from("users")
         .select("face_descriptor, profile_photo_url")
         .eq("id", user.id)
         .single()
       
-      if (userError) {
-        console.error("Error fetching user data:", userError)
-        throw userError
+      // If user doesn't exist in public.users, create them via API (bypasses RLS)
+      if (userError || !userData) {
+        console.log("User not found in public.users, creating via API...")
+        
+        const metadata = user.user_metadata || {}
+        const role = metadata.role || 'student'
+        
+        try {
+          const response = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Student',
+              last_name: metadata.last_name || 'User',
+              matric_number: metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: metadata.level || null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (response.ok) {
+            console.log("User profile created successfully:", result)
+            // Re-fetch the user data
+            const { data: newUserData } = await supabase
+              .from('users')
+              .select('face_descriptor, profile_photo_url')
+              .eq('id', user.id)
+              .single()
+            userData = newUserData
+          } else {
+            console.error("API error creating profile:", result.error)
+            throw new Error(result.error || "Failed to create user profile")
+          }
+        } catch (apiError) {
+          console.error("Failed to create profile via API:", apiError)
+          throw apiError
+        }
+      }
+      
+      if (!userData) {
+        throw new Error("Failed to get user data")
       }
       
       console.log("User data fetched:", {

@@ -22,17 +22,63 @@ export default function StudentDashboardPage() {
         return
       }
 
-      // Fetch student data - RLS is disabled so this should work
-      const { data: studentData, error: studentError } = await supabase
+      // Fetch student data - explicitly include face_descriptor fields
+      let { data: studentData, error: studentError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, first_name, last_name, role, matric_number, department, level, face_descriptor, profile_photo_url')
         .eq('id', user.id)
-        .maybeSingle()  // Use maybeSingle() instead of single() to handle 0 rows gracefully
-
-      if (studentError && studentError.code !== 'PGRST116') {
-        // Only log non-"no rows" errors
-        console.error("Error fetching student data:", studentError)
+        .single()
+      
+      // If user doesn't exist in public.users, create them via API (bypasses RLS)
+      if (studentError || !studentData) {
+        console.log("User not found in public.users, creating via API...")
+        
+        const metadata = user.user_metadata || {}
+        const role = metadata.role || 'student'
+        
+        try {
+          const response = await fetch('/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: user.id,
+              email: user.email,
+              role: role,
+              first_name: metadata.first_name || 'Student',
+              last_name: metadata.last_name || 'User',
+              matric_number: metadata.matric_number || `TEMP-${user.id.substring(0, 8)}`,
+              staff_id: role === 'lecturer' ? (metadata.staff_id || `STF-${user.id.substring(0, 8)}`) : null,
+              department: metadata.department || null,
+              level: metadata.level || null,
+              title: role === 'lecturer' ? (metadata.title || null) : null,
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (response.ok) {
+            console.log("User profile created successfully:", result)
+            // Re-fetch the user data
+            const { data: newStudentData } = await supabase
+              .from('users')
+              .select('id, email, first_name, last_name, role, matric_number, department, level, face_descriptor, profile_photo_url')
+              .eq('id', user.id)
+              .single()
+            studentData = newStudentData
+          } else {
+            console.error("API error creating profile:", result.error)
+          }
+        } catch (apiError) {
+          console.error("Failed to create profile via API:", apiError)
+        }
       }
+
+      console.log("Student data fetched:", studentData);
+      console.log("Face enrolled check:", {
+        hasFaceDescriptor: !!studentData?.face_descriptor,
+        hasProfilePhoto: !!studentData?.profile_photo_url,
+        faceEnrolled: !!(studentData?.face_descriptor || studentData?.profile_photo_url)
+      });
 
       setStudent(studentData || null)
 

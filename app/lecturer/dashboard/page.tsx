@@ -28,10 +28,10 @@ export default function LecturerDashboardPage() {
         return
       }
 
-      // First try to get lecturer data
+      // First try to get lecturer data - explicitly include face_descriptor fields
       let { data: lecturerData, error: lecturerError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, first_name, last_name, role, staff_id, department, title, face_descriptor, profile_photo_url')
         .eq('id', user.id)
         .single()
 
@@ -90,6 +90,13 @@ export default function LecturerDashboardPage() {
           .eq('status', 'active')
           .single()
       ])
+
+      console.log("Lecturer data fetched:", lecturerData);
+      console.log("Face enrolled check:", {
+        hasFaceDescriptor: !!lecturerData?.face_descriptor,
+        hasProfilePhoto: !!lecturerData?.profile_photo_url,
+        faceEnrolled: !!(lecturerData?.face_descriptor || lecturerData?.profile_photo_url)
+      });
 
       setLecturer(lecturerData)
       setCourses(coursesData || [])
@@ -206,6 +213,9 @@ export default function LecturerDashboardPage() {
 
   const title = lecturer?.title || ""
   const lastName = lecturer?.last_name || "Lecturer"
+  // Check for face_descriptor (the actual face data) OR profile_photo_url
+  // face_descriptor is the reliable indicator since it's what's used for verification
+  const faceEnrolled = !!lecturer?.face_descriptor || !!lecturer?.profile_photo_url
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -237,6 +247,21 @@ export default function LecturerDashboardPage() {
 
       <div className="px-4 pb-8">
         <div className="max-w-lg mx-auto space-y-4 -mt-2">
+          
+          {/* Face Enrollment Alert */}
+          {!faceEnrolled && (
+            <Link href="/lecturer/enroll-face">
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Scan className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-amber-900">Enroll your face first</p>
+                  <p className="text-xs text-amber-600">Required for face verification</p>
+                </div>
+              </div>
+            </Link>
+          )}
           
           {/* Active Session Card */}
           {activeSession ? (
@@ -284,20 +309,24 @@ export default function LecturerDashboardPage() {
               </Button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="w-full bg-gray-900 rounded-2xl p-5 text-white text-left"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold mb-0.5">Start Attendance Session</h2>
-                  <p className="text-white/70 text-sm">Generate a code for students</p>
+            <Link href={faceEnrolled ? "#" : "/lecturer/enroll-face"}>
+              <button
+                onClick={faceEnrolled ? () => setShowCreateModal(true) : undefined}
+                className={`w-full rounded-2xl p-5 text-white text-left ${faceEnrolled ? 'bg-gray-900' : 'bg-gray-400'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold mb-0.5">Start Attendance Session</h2>
+                    <p className="text-white/70 text-sm">
+                      {faceEnrolled ? "Generate a code for students" : "Enroll face first"}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Plus className="w-6 h-6" />
+                  </div>
                 </div>
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <Plus className="w-6 h-6" />
-                </div>
-              </div>
-            </button>
+              </button>
+            </Link>
           )}
 
           {/* Quick Stats */}
