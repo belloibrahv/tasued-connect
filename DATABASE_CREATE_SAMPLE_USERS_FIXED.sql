@@ -3,12 +3,13 @@
 
 -- 1. CREATE ADMIN USER
 -- Using gen_random_uuid() to generate proper UUIDs
-INSERT INTO public.users (id, email, first_name, last_name, role, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'admin@tasued.edu.ng',
   'System',
   'Administrator',
+  NULL,
   'admin',
   TRUE,
   TRUE
@@ -23,12 +24,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = NOW();
 
 -- 2. CREATE LECTURER USER
-INSERT INTO public.users (id, email, first_name, last_name, role, staff_id, department, title, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, staff_id, department, title, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'john.doe@tasued.edu.ng',
   'John',
   'Doe',
+  NULL,
   'lecturer',
   'TAS/CS/001',
   'Computer Science',
@@ -49,12 +51,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = NOW();
 
 -- 3. CREATE STUDENT USER
-INSERT INTO public.users (id, email, first_name, last_name, role, matric_number, level, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, matric_number, level, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'jane.smith@stu.tasued.edu.ng',
   'Jane',
   'Smith',
+  NULL,
   'student',
   'CSC/20/001',
   '200',
@@ -73,12 +76,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = NOW();
 
 -- 4. CREATE ADDITIONAL LECTURER FOR TESTING
-INSERT INTO public.users (id, email, first_name, last_name, role, staff_id, department, title, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, staff_id, department, title, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'mary.johnson@tasued.edu.ng',
   'Mary',
   'Johnson',
+  NULL,
   'lecturer',
   'TAS/CS/002',
   'Computer Science',
@@ -99,12 +103,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = NOW();
 
 -- 5. CREATE ADDITIONAL STUDENTS FOR TESTING
-INSERT INTO public.users (id, email, first_name, last_name, role, matric_number, level, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, matric_number, level, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'bob.williams@stu.tasued.edu.ng',
   'Bob',
   'Williams',
+  NULL,
   'student',
   'CSC/20/002',
   '200',
@@ -122,12 +127,13 @@ ON CONFLICT (id) DO UPDATE SET
   is_email_verified = EXCLUDED.is_email_verified,
   updated_at = NOW();
 
-INSERT INTO public.users (id, email, first_name, last_name, role, matric_number, level, is_active, is_email_verified)
+INSERT INTO public.users (id, email, first_name, last_name, other_names, role, matric_number, level, is_active, is_email_verified)
 VALUES (
   gen_random_uuid(),  -- Generate a new UUID
   'alice.brown@stu.tasued.edu.ng',
   'Alice',
   'Brown',
+  NULL,
   'student',
   'CSC/20/003',
   '200',

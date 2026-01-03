@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   email TEXT UNIQUE NOT NULL,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
+  other_names TEXT, -- Additional name field for full name support
   role TEXT NOT NULL DEFAULT 'student',
   matric_number TEXT UNIQUE,
   staff_id TEXT UNIQUE,
@@ -325,12 +326,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.users (id, email, first_name, last_name, role, is_active, is_email_verified)
+  INSERT INTO public.users (id, email, first_name, last_name, other_names, role, is_active, is_email_verified)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'first_name', 'User'),
     COALESCE(NEW.raw_user_meta_data->>'last_name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'other_names', NULL),
     COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
     TRUE,
     COALESCE(NEW.email_confirmed_at IS NOT NULL, FALSE)
@@ -354,12 +356,13 @@ SET search_path = public
 AS $$
 BEGIN
   -- Update the user profile if it exists
-  INSERT INTO public.users (id, email, first_name, last_name, role, is_active, is_email_verified)
+  INSERT INTO public.users (id, email, first_name, last_name, other_names, role, is_active, is_email_verified)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'first_name', 'User'),
     COALESCE(NEW.raw_user_meta_data->>'last_name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'other_names', NULL),
     COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
     TRUE,
     COALESCE(NEW.email_confirmed_at IS NOT NULL, FALSE)
@@ -368,6 +371,7 @@ BEGIN
     email = EXCLUDED.email,
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,
+    other_names = EXCLUDED.other_names,
     role = EXCLUDED.role,
     is_email_verified = EXCLUDED.is_email_verified,
     updated_at = NOW();
