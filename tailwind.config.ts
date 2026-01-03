@@ -18,7 +18,7 @@ const config = {
     },
     // Safelist for dynamic margin/padding classes
     {
-      pattern: /^(m|p)(t|b|l|r|x|y)-(0|1|2|3|4|5|6|8|10|12|14|16|20|24|32|40|48|56|64)$/, 
+      pattern: /^(m|p)(t|b|l|r|x|y)?-(0|1|2|3|4|5|6|8|10|12|14|16|20|24|32|40|48|56|64)$/, 
     },
     // Safelist for dynamic opacity classes
     {
@@ -39,10 +39,6 @@ const config = {
     // Safelist for dynamic animation classes
     {
       pattern: /^animate-/, 
-    },
-    // Safelist for dynamic state classes
-    {
-      pattern: /^(hover|focus|active|group-hover|group-focus):/, 
     },
   ],
   prefix: "",
