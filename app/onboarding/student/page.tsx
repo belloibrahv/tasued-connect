@@ -194,7 +194,7 @@ export default function StudentOnboardingPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-900">Welcome to FaceCheck</h1>
-          <p className="text-gray-500 text-sm mt-1">Let's get you set up in just a few steps</p>
+          <p className="text-gray-500 text-sm mt-1">Let us get you set up in just a few steps</p>
         </div>
       </div>
 
@@ -247,7 +247,7 @@ export default function StudentOnboardingPage() {
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Enroll Your Face</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  We'll use your face to verify your identity when marking attendance. This takes less than 30 seconds.
+                  We will use your face to verify your identity when marking attendance. This takes less than 30 seconds.
                 </p>
                 <div className="space-y-3">
                   <Button
@@ -309,7 +309,7 @@ export default function StudentOnboardingPage() {
                           />
                         </FormControl>
                         <FormDescription>
-                          We'll only contact this number in case of emergency
+                          We will only contact this number in case of emergency
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

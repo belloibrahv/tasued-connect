@@ -646,7 +646,7 @@ export default function LecturerDashboardAdvancedPage() {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-sm text-gray-500 mb-3">
-                    You haven't created any courses yet
+                    You have not created any courses yet
                   </p>
                   <Link href="/lecturer/courses/new">
                     <Button variant="outline" size="sm">

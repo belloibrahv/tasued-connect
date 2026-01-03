@@ -201,7 +201,7 @@ export default function LecturerOnboardingPage() {
       <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-900">Welcome, {lecturer.title} {lecturer.last_name}</h1>
-          <p className="text-gray-500 text-sm mt-1">Let's set up your teaching profile</p>
+          <p className="text-gray-500 text-sm mt-1">Let us set up your teaching profile</p>
         </div>
       </div>
 
