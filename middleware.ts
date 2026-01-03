@@ -10,6 +10,12 @@ const publicRoutes = [
   '/verify-email',
 ]
 
+// Onboarding routes
+const onboardingRoutes = [
+  '/onboarding/student',
+  '/onboarding/lecturer',
+]
+
 // Dashboard paths for each role
 const dashboardPaths: Record<string, string> = {
   student: '/student/dashboard',
@@ -59,10 +65,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Check if route is public
+  // Check if route is public or onboarding
   const isPublicRoute = publicRoutes.some(route => 
     pathname === route || pathname.startsWith('/api/')
   )
+  const isOnboardingRoute = onboardingRoutes.some(route => pathname.startsWith(route))
 
   // Get current session
   const { data: { session } } = await supabase.auth.getSession()
@@ -74,9 +81,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // If authenticated user tries to access login/register, redirect to dashboard
+  // If authenticated user tries to access login/register, redirect to dashboard or onboarding
   if (session && (pathname === '/login' || pathname === '/register')) {
-    // Get user role
+    // Get user role and check onboarding status
     const { data: userData } = await supabase
       .from('users')
       .select('role')
@@ -84,8 +91,44 @@ export async function middleware(request: NextRequest) {
       .single()
 
     const role = userData?.role || 'student'
+    
+    // Check if onboarding is complete
+    const { data: onboardingData } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', `onboarding_complete_${session.user.id}`)
+      .single()
+
+    if (!onboardingData) {
+      // Redirect to onboarding
+      const onboardingPath = role === 'lecturer' ? '/onboarding/lecturer' : '/onboarding/student'
+      return NextResponse.redirect(new URL(onboardingPath, request.url))
+    }
+
     const dashboardPath = dashboardPaths[role] || '/student/dashboard'
     return NextResponse.redirect(new URL(dashboardPath, request.url))
+  }
+
+  // If on onboarding route, check if already completed
+  if (session && isOnboardingRoute) {
+    const { data: onboardingData } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', `onboarding_complete_${session.user.id}`)
+      .single()
+
+    if (onboardingData) {
+      // Onboarding already complete, redirect to dashboard
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+
+      const role = userData?.role || 'student'
+      const dashboardPath = dashboardPaths[role] || '/student/dashboard'
+      return NextResponse.redirect(new URL(dashboardPath, request.url))
+    }
   }
 
   // Role-based access control for protected routes

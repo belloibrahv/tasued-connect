@@ -58,20 +58,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate role-specific fields
-    if (role === 'student' && !matric_number) {
-      return NextResponse.json(
-        { error: 'Matric number is required for students' },
-        { status: 400 }
-      )
-    }
-
-    if (role === 'lecturer' && !staff_id) {
-      return NextResponse.json(
-        { error: 'Staff ID is required for lecturers' },
-        { status: 400 }
-      )
-    }
+    // Note: role-specific fields are optional during registration
+    // They can be updated later or generated as temporary values
 
     // Check if user already exists
     const { data: existingUser } = await supabaseAdmin
@@ -96,8 +84,8 @@ export async function POST(request: NextRequest) {
         role,
         first_name,
         last_name,
-        matric_number: role === 'student' ? matric_number : null,
-        staff_id: role === 'lecturer' ? staff_id : null,
+        matric_number: role === 'student' ? (matric_number || `TEMP-${id.substring(0, 8)}`) : null,
+        staff_id: role === 'lecturer' ? (staff_id || `STF-${id.substring(0, 8)}`) : null,
         department: department || null,
         level: role === 'student' ? level : null,
         title: role === 'lecturer' ? title : null,
