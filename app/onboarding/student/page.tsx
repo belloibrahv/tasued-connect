@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, CheckCircle, Camera, Bell, Phone } from "lucide-react"
+import { Loader2, CheckCircle, Camera, Bell } from "lucide-react"
 import toast from "react-hot-toast"
 
 import { Button } from "@/components/ui/button"
@@ -148,17 +148,33 @@ export default function StudentOnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Update user profile with onboarding data
-      const { error } = await supabase
-        .from("users")
-        .update({
-          phone_number: data.emergencyContact,
-          other_names: data.emergencyContactName,
-          is_active: true,
+      // Store emergency contact info in system_settings
+      const { error: contactError } = await supabase
+        .from("system_settings")
+        .upsert({
+          key: `emergency_contact_${user.id}`,
+          value: {
+            name: data.emergencyContactName,
+            phone: data.emergencyContact,
+          },
+          category: "student_settings",
         })
-        .eq("id", user.id)
 
-      if (error) throw error
+      if (contactError) throw contactError
+
+      // Store notification preferences
+      const { error: prefsError } = await supabase
+        .from("system_settings")
+        .upsert({
+          key: `notification_preferences_${user.id}`,
+          value: {
+            enabled: data.notificationsEnabled,
+            language: data.preferredLanguage,
+          },
+          category: "student_settings",
+        })
+
+      if (prefsError) throw prefsError
 
       // Mark onboarding as complete
       const { error: settingsError } = await supabase

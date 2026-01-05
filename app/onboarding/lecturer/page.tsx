@@ -141,28 +141,45 @@ export default function LecturerOnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Update user profile with onboarding data
-      const { error } = await supabase
-        .from("users")
-        .update({
-          office_location: data.officeLocation,
-          bio: data.researchInterests || null,
-          is_active: true,
-        })
-        .eq("id", user.id)
-
-      if (error) throw error
-
-      // Store office hours in system settings
-      const { error: settingsError } = await supabase
+      // Store office details in system_settings
+      const { error: officeError } = await supabase
         .from("system_settings")
         .upsert({
-          key: `office_hours_${user.id}`,
-          value: data.officeHours,
+          key: `office_details_${user.id}`,
+          value: {
+            location: data.officeLocation,
+            hours: data.officeHours,
+          },
           category: "lecturer_settings",
         })
 
-      if (settingsError) console.error("Settings error:", settingsError)
+      if (officeError) throw officeError
+
+      // Store research interests in system_settings
+      const { error: researchError } = await supabase
+        .from("system_settings")
+        .upsert({
+          key: `research_interests_${user.id}`,
+          value: {
+            interests: data.researchInterests || null,
+          },
+          category: "lecturer_settings",
+        })
+
+      if (researchError) throw researchError
+
+      // Store notification preferences
+      const { error: prefsError } = await supabase
+        .from("system_settings")
+        .upsert({
+          key: `notification_preferences_${user.id}`,
+          value: {
+            enabled: data.notificationsEnabled,
+          },
+          category: "lecturer_settings",
+        })
+
+      if (prefsError) throw prefsError
 
       // Mark onboarding as complete
       await supabase
