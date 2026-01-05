@@ -164,12 +164,12 @@ export default function AdminCoursesPage() {
     try {
       const { data, error } = await supabase.from('courses').insert({
         code: newCode.toUpperCase(),
-        title: newTitle,
+        name: newTitle,
         department: newDept,
         level: newLevel,
         lecturer_id: newLecturer || null,
-        academic_year: '2024/2025',
-        semester: '1st'
+        year: new Date().getFullYear(),
+        semester: 'First'
       }).select().single()
 
       if (error) throw error

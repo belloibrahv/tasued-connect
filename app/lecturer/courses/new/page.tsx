@@ -39,14 +39,12 @@ export default function NewCoursePage() {
 
   const [formData, setFormData] = useState({
     code: "",
-    title: "",
+    name: "",
     description: "",
     department: "",
     level: "",
     semester: "",
-    credits: "3",
-    academic_year: "2024/2025",
-    min_attendance_percentage: "75",
+    year: new Date().getFullYear().toString(),
   })
 
   const handleChange = (field: string, value: string) => {
@@ -56,7 +54,7 @@ export default function NewCoursePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
-    if (!formData.code || !formData.title || !formData.department || !formData.level || !formData.semester) {
+    if (!formData.code || !formData.name || !formData.department || !formData.level || !formData.semester) {
       toast.error("Please fill in all required fields")
       return
     }
@@ -74,14 +72,12 @@ export default function NewCoursePage() {
         .from('courses')
         .insert({
           code: formData.code.toUpperCase(),
-          title: formData.title,
+          name: formData.name,
           description: formData.description || null,
           department: formData.department,
           level: formData.level,
           semester: formData.semester,
-          credits: parseInt(formData.credits),
-          academic_year: formData.academic_year,
-          min_attendance_percentage: parseInt(formData.min_attendance_percentage),
+          year: parseInt(formData.year),
           lecturer_id: user.id,
           is_active: true,
         })
@@ -169,12 +165,12 @@ export default function NewCoursePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="title">Course Title *</Label>
+                <Label htmlFor="name">Course Name *</Label>
                 <Input
-                  id="title"
+                  id="name"
                   placeholder="e.g., Data Structures"
-                  value={formData.title}
-                  onChange={(e) => handleChange("title", e.target.value)}
+                  value={formData.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
                 />
               </div>
             </div>
@@ -231,7 +227,7 @@ export default function NewCoursePage() {
               </div>
             </div>
 
-            {/* Semester & Academic Year */}
+            {/* Semester & Year */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Semester *</Label>
@@ -252,53 +248,14 @@ export default function NewCoursePage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="academic_year">Academic Year</Label>
+                <Label htmlFor="year">Year</Label>
                 <Input
-                  id="academic_year"
-                  placeholder="e.g., 2024/2025"
-                  value={formData.academic_year}
-                  onChange={(e) => handleChange("academic_year", e.target.value)}
+                  id="year"
+                  type="number"
+                  placeholder="e.g., 2024"
+                  value={formData.year}
+                  onChange={(e) => handleChange("year", e.target.value)}
                 />
-              </div>
-            </div>
-
-            {/* Credits & Min Attendance */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="credits">Credit Units</Label>
-                <Select
-                  value={formData.credits}
-                  onValueChange={(value) => handleChange("credits", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6].map((c) => (
-                      <SelectItem key={c} value={c.toString()}>
-                        {c} Unit{c > 1 ? "s" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="min_attendance">Min. Attendance %</Label>
-                <Select
-                  value={formData.min_attendance_percentage}
-                  onValueChange={(value) => handleChange("min_attendance_percentage", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[50, 60, 70, 75, 80, 85, 90].map((p) => (
-                      <SelectItem key={p} value={p.toString()}>
-                        {p}%
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

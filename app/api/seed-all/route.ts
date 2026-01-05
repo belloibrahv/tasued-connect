@@ -104,27 +104,23 @@ export async function GET() {
     const courses = [
       {
         code: "CSC 415",
-        title: "Net-Centric Computing",
+        name: "Net-Centric Computing",
         description: "Introduction to web technologies, protocols, and architecture.",
-        credits: 3,
         department: "Computer Science",
         level: "400",
         semester: "Rain",
-        academic_year: "2023/2024",
-        schedule: JSON.stringify({ days: ["Tue", "Thu"], times: ["14:00-16:00", "10:00-12:00"] }),
+        year: 2023,
         lecturer_id: lecturerId,
         is_active: true
       },
       {
         code: "CSC 412",
-        title: "Computer Graphics and Animation",
+        name: "Computer Graphics and Animation",
         description: "Principles of computer graphics, rendering pipelines, and 3D modeling.",
-        credits: 3,
         department: "Computer Science",
         level: "400",
         semester: "Rain",
-        academic_year: "2023/2024",
-        schedule: JSON.stringify({ days: ["Mon"], times: ["10:00-13:00"] }),
+        year: 2023,
         lecturer_id: lecturerId,
         is_active: true
       }
