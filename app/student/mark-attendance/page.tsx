@@ -519,19 +519,14 @@ function MarkAttendanceContent() {
       const attendanceData: any = {
         session_id: session.id,
         student_id: user.id,
-        course_id: session.course_id,
-        status: "present",
-        marking_method: "face",  // Valid values: 'qr', 'manual', 'system', 'face'
-        check_in_time: new Date().toTimeString().split(" ")[0]
+        marking_method: "face",
+        marked_at: new Date().toISOString()
       }
       
       // Add location data if verified
       if (studentLocation && locationResult) {
-        attendanceData.location_latitude = studentLocation.latitude
-        attendanceData.location_longitude = studentLocation.longitude
-        attendanceData.location_accuracy = studentLocation.accuracy
-        attendanceData.location_distance = locationResult.distance
-        attendanceData.location_verified = locationResult.isWithinRange
+        attendanceData.location_lat = studentLocation.latitude
+        attendanceData.location_lng = studentLocation.longitude
       }
       
       console.log("Inserting attendance record:", attendanceData)

@@ -120,8 +120,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
       const { error } = await supabase
         .from('lecture_sessions')
         .update({
-          status: 'closed',
-          closed_at: new Date().toISOString()
+          status: 'completed',
         })
         .eq('id', params.id)
 
@@ -187,8 +186,6 @@ export default function SessionPage({ params }: { params: { id: string } }) {
         .insert({
           session_id: session.id,
           student_id: foundStudent.id,
-          course_id: session.course_id,
-          status: 'present',
           marking_method: 'manual',
           marked_at: new Date().toISOString()
         })
@@ -230,7 +227,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold tracking-tight">{session.courses?.code}</h1>
               <Badge variant={session.status === 'active' ? 'default' : 'secondary'}>
-                {session.status === 'active' ? 'Active' : 'Ended'}
+                {session.status === 'active' ? 'Active' : 'Completed'}
               </Badge>
             </div>
             <p className="text-muted-foreground">{session.topic}</p>
@@ -324,12 +321,12 @@ export default function SessionPage({ params }: { params: { id: string } }) {
             <CardContent className="flex flex-col items-center gap-6">
               <div className="bg-white p-4 rounded-xl border-4 border-slate-50 shadow-sm">
                 <QRCodeGenerator
-                  value={session.attendance_code}
-                  label={session.attendance_code}
+                  value={session.session_code}
+                  label={session.session_code}
                 />
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold tracking-widest text-primary">{session.attendance_code}</p>
+                <p className="text-2xl font-bold tracking-widest text-primary">{session.session_code}</p>
                 <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
                   <Clock className="h-3 w-3" /> Started: {session.start_time}
                 </p>
