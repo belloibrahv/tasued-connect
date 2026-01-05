@@ -148,58 +148,72 @@ export function isGeolocationAvailable(): boolean {
  * TASUED Main Campus approximate center: 6.8167°N, 3.9333°E
  */
 export const TASUED_VENUES: Record<string, VenueConfig> = {
-  // Computer Science Department
-  'CSC Lab 1': { 
-    name: 'CSC Lab 1',
+  // Science Buildings
+  'Sbk 1': { 
+    name: 'Sbk 1',
     latitude: 6.8167, 
     longitude: 3.9333,
-    building: 'Computer Science Building',
-    floor: 'Ground Floor'
+    building: 'Science Building 1'
   },
-  'CSC Lab 2': { 
-    name: 'CSC Lab 2',
+  'Sbk 2': { 
+    name: 'Sbk 2',
     latitude: 6.8168, 
     longitude: 3.9334,
-    building: 'Computer Science Building',
-    floor: 'First Floor'
+    building: 'Science Building 2'
   },
-  
-  // Science Faculty Buildings
-  'Science Building': { 
-    name: 'Science Building',
-    latitude: 6.8165, 
-    longitude: 3.9330,
-    building: 'Faculty of Science'
-  },
-  'Faculty of Science': { 
-    name: 'Faculty of Science',
-    latitude: 6.8166, 
-    longitude: 3.9332,
-    building: 'Faculty of Science Main'
-  },
-  
-  // Lecture Halls
-  'Main Auditorium': { 
-    name: 'Main Auditorium',
-    latitude: 6.8170, 
-    longitude: 3.9340,
-    building: 'Central Admin',
-    radius: 150 // Larger radius for auditorium
-  },
-  'Lecture Hall A': { 
-    name: 'Lecture Hall A',
+  'Sbk 3': { 
+    name: 'Sbk 3',
     latitude: 6.8169, 
     longitude: 3.9335,
-    building: 'Lecture Complex'
-  },
-  'Lecture Hall B': { 
-    name: 'Lecture Hall B',
-    latitude: 6.8171, 
-    longitude: 3.9337,
-    building: 'Lecture Complex'
+    building: 'Science Building 3'
   },
   
-  // Add more venues as needed
+  // Cepep Buildings
+  'Cepep up': { 
+    name: 'Cepep up',
+    latitude: 6.8165, 
+    longitude: 3.9330,
+    building: 'Cepep Upper Level'
+  },
+  'Cepep down': { 
+    name: 'Cepep down',
+    latitude: 6.8166, 
+    longitude: 3.9332,
+    building: 'Cepep Lower Level'
+  },
+  
+  // Main Halls
+  'Auditorium OGD Hall': { 
+    name: 'Auditorium OGD Hall',
+    latitude: 6.8170, 
+    longitude: 3.9340,
+    building: 'Auditorium',
+    radius: 150
+  },
+  
+  // Smart Class Building
+  'Smart class building': { 
+    name: 'Smart class building',
+    latitude: 6.8171, 
+    longitude: 3.9337,
+    building: 'Smart Class Building'
+  },
+  
+  // University Block
+  'University block': { 
+    name: 'University block',
+    latitude: 6.8172, 
+    longitude: 3.9338,
+    building: 'University Block'
+  },
+  
+  // Alex O Building
+  'Alex O building': { 
+    name: 'Alex O building',
+    latitude: 6.8173, 
+    longitude: 3.9339,
+    building: 'Alex O Building'
+  },
 }
 
 // Mutable venues store for runtime updates
