@@ -406,12 +406,12 @@ export default function AdminCoursesPage() {
                       <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary font-bold border border-primary/10">
-                            {course.lecturers ? course.lecturers.last_name[0] : '?'}
+                            {course.lecturers?.last_name ? course.lecturers.last_name[0] : '?'}
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Assigned Proctor</p>
                             <p className="text-xs font-extrabold text-gray-900">
-                              {course.lecturers ? `${course.lecturers.title} ${course.lecturers.last_name}` : 'Awaiting Assignment'}
+                              {course.lecturers ? `${course.lecturers?.title || ''} ${course.lecturers?.last_name || ''}`.trim() : 'Awaiting Assignment'}
                             </p>
                           </div>
                         </div>

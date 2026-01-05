@@ -105,33 +105,50 @@ export default function StudentDashboardPage() {
       if (coursesData) {
         const coursesWithAttendance = await Promise.all(
           coursesData.map(async (enrollment: any) => {
-            // Get total sessions for the course
-            const { count: totalSessions } = await supabase
-              .from('lecture_sessions')
-              .select('*', { count: 'exact', head: true })
-              .eq('course_id', enrollment.courses.id)
-              .eq('status', 'active')
+            try {
+              const courseId = enrollment.courses?.id
+              
+              if (!courseId) {
+                return { ...enrollment, attendance_percentage: 0 }
+              }
+              
+              // Get total sessions for the course
+              const { count: totalSessions } = await supabase
+                .from('lecture_sessions')
+                .select('*', { count: 'exact', head: true })
+                .eq('course_id', courseId)
+                .eq('status', 'active')
 
-            // Get attended sessions for this student
-            const { count: attendedSessions } = await supabase
-              .from('attendance_records')
-              .select('*', { count: 'exact', head: true })
-              .eq('student_id', user.id)
-              .in('session_id', 
-                (await supabase
-                  .from('lecture_sessions')
-                  .select('id')
-                  .eq('course_id', enrollment.courses.id)
-                ).data?.map((s: any) => s.id) || []
-              )
+              // Get attended sessions for this student
+              const { data: sessionData } = await supabase
+                .from('lecture_sessions')
+                .select('id')
+                .eq('course_id', courseId)
+              
+              const sessionIds = (sessionData || []).map((s: any) => s?.id).filter(Boolean)
+              
+              let attendedSessions = 0
+              if (sessionIds.length > 0) {
+                const { count } = await supabase
+                  .from('attendance_records')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('student_id', user.id)
+                  .in('session_id', sessionIds)
+                
+                attendedSessions = count || 0
+              }
 
-            const percentage = totalSessions && totalSessions > 0 
-              ? Math.round((attendedSessions || 0) / totalSessions * 100)
-              : 0
+              const percentage = totalSessions && totalSessions > 0 
+                ? Math.round((attendedSessions / totalSessions) * 100)
+                : 0
 
-            return {
-              ...enrollment,
-              attendance_percentage: percentage
+              return {
+                ...enrollment,
+                attendance_percentage: percentage
+              }
+            } catch (error) {
+              console.error('Error calculating attendance:', error)
+              return { ...enrollment, attendance_percentage: 0 }
             }
           })
         )

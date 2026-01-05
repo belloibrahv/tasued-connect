@@ -4,10 +4,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Public routes that don't require authentication
 const publicRoutes = [
   '/',
-  '/login',
-  '/register',
+  '/(auth)/login',
+  '/(auth)/register',
   '/auth/callback',
-  '/verify-email',
+  '/(auth)/verify-email',
 ]
 
 // Onboarding routes
@@ -76,13 +76,13 @@ export async function middleware(request: NextRequest) {
 
   // If no session and trying to access protected route, redirect to login
   if (!session && !isPublicRoute) {
-    const redirectUrl = new URL('/login', request.url)
+    const redirectUrl = new URL('/(auth)/login', request.url)
     redirectUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
   // If authenticated user tries to access login/register, redirect to dashboard or onboarding
-  if (session && (pathname === '/login' || pathname === '/register')) {
+  if (session && (pathname === '/(auth)/login' || pathname === '/(auth)/register')) {
     // Get user role and check onboarding status
     const { data: userData } = await supabase
       .from('users')

@@ -158,10 +158,10 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
   const classesAttended = enrollment?.classes_attended || 0
   const totalClasses = enrollment?.total_classes || allSessions.length
   const classesAbsent = totalClasses - classesAttended
-  const lecturerName = course.lecturer 
+  const lecturerName = course?.lecturer 
     ? Array.isArray(course.lecturer)
-      ? `${course.lecturer[0]?.title || ''} ${course.lecturer[0]?.first_name} ${course.lecturer[0]?.last_name}`.trim()
-      : `${course.lecturer.title || ''} ${course.lecturer.first_name} ${course.lecturer.last_name}`.trim()
+      ? `${course.lecturer[0]?.title || ''} ${course.lecturer[0]?.first_name || ''} ${course.lecturer[0]?.last_name || ''}`.trim()
+      : `${course.lecturer?.title || ''} ${course.lecturer?.first_name || ''} ${course.lecturer?.last_name || ''}`.trim()
     : 'TBA'
 
   // Determine attendance status

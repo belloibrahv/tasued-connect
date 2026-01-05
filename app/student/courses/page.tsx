@@ -38,32 +38,46 @@ export default function CoursesPage() {
       // Calculate attendance percentage for each course
       const enrollmentsWithAttendance = await Promise.all(
         (data || []).map(async (enrollment: any) => {
-          const courseId = enrollment.courses.id
-          
-          // Get total sessions for the course
-          const { count: totalSessions } = await supabase
-            .from('lecture_sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('course_id', courseId)
-            .in('status', ['active', 'completed'])
+          try {
+            const courseId = enrollment.courses?.id
+            
+            if (!courseId) {
+              return { ...enrollment, attendance_percentage: 0 }
+            }
+            
+            // Get total sessions for the course
+            const { count: totalSessions } = await supabase
+              .from('lecture_sessions')
+              .select('*', { count: 'exact', head: true })
+              .eq('course_id', courseId)
+              .in('status', ['active', 'completed'])
 
-          // Get attended sessions for this student
-          const { count: attendedSessions } = await supabase
-            .from('attendance_records')
-            .select('*', { count: 'exact', head: true })
-            .eq('student_id', user.id)
-            .eq('is_present', true)
-            .in('session_id', 
-              (enrollment.courses.lecture_sessions || []).map((s: any) => s.id)
-            )
+            // Get attended sessions for this student
+            const sessionIds = (enrollment.courses?.lecture_sessions || []).map((s: any) => s?.id).filter(Boolean)
+            
+            let attendedSessions = 0
+            if (sessionIds.length > 0) {
+              const { count } = await supabase
+                .from('attendance_records')
+                .select('*', { count: 'exact', head: true })
+                .eq('student_id', user.id)
+                .eq('is_present', true)
+                .in('session_id', sessionIds)
+              
+              attendedSessions = count || 0
+            }
 
-          const percentage = totalSessions && totalSessions > 0 
-            ? Math.round((attendedSessions || 0) / totalSessions * 100)
-            : 0
+            const percentage = totalSessions && totalSessions > 0 
+              ? Math.round((attendedSessions / totalSessions) * 100)
+              : 0
 
-          return {
-            ...enrollment,
-            attendance_percentage: percentage
+            return {
+              ...enrollment,
+              attendance_percentage: percentage
+            }
+          } catch (error) {
+            console.error('Error calculating attendance:', error)
+            return { ...enrollment, attendance_percentage: 0 }
           }
         })
       )
