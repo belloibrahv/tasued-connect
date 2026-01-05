@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Plus, X, Calendar, Clock, MapPin } from "lucide-react"
+import { Loader2, Plus, X } from "lucide-react"
 import toast from "react-hot-toast"
 
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form"
 import {
   Select,
@@ -79,20 +78,19 @@ export function BulkSessionCreator({
 
   const daysOfWeek = form.watch("daysOfWeek")
 
-  const generateCode = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    let code = ""
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return code
-  }
-
   async function onSubmit(data: BulkSessionInput) {
     setIsLoading(true)
     try {
       const startDate = new Date(data.startDate)
       const endDate = new Date(data.endDate)
+      
+      // Validate date range
+      if (startDate > endDate) {
+        toast.error("Start date must be before end date")
+        setIsLoading(false)
+        return
+      }
+      
       const selectedDays = data.daysOfWeek.map(Number)
 
       const sessions = []
@@ -101,23 +99,26 @@ export function BulkSessionCreator({
       // Generate sessions for each matching day in the date range
       while (currentDate <= endDate) {
         if (selectedDays.includes(currentDate.getDay())) {
-          const code = generateCode()
-          const expiresAt = new Date(currentDate)
-          expiresAt.setHours(
-            parseInt(data.startTime.split(":")[0]) +
-              parseInt(data.duration) / 60
-          )
+          // Generate session code
+          const sessionCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+          
+          // Calculate end time based on duration
+          const [hours, minutes] = data.startTime.split(':').map(Number)
+          const startDateTime = new Date(currentDate)
+          startDateTime.setHours(hours, minutes, 0)
+          
+          const endDateTime = new Date(startDateTime.getTime() + parseInt(data.duration) * 60000)
+          const endTimeStr = endDateTime.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })
 
           sessions.push({
             course_id: data.courseId,
             lecturer_id: lecturerId,
-            attendance_code: code,
-            code_expires_at: expiresAt.toISOString(),
             session_date: currentDate.toISOString().split("T")[0],
             start_time: data.startTime,
-            venue: data.venue,
-            duration_minutes: parseInt(data.duration),
-            status: "scheduled",
+            end_time: endTimeStr,
+            location: data.venue,
+            session_code: sessionCode,
+            status: "active",
           })
         }
 
@@ -126,6 +127,7 @@ export function BulkSessionCreator({
 
       if (sessions.length === 0) {
         toast.error("No sessions to create for selected days")
+        setIsLoading(false)
         return
       }
 
@@ -142,6 +144,7 @@ export function BulkSessionCreator({
       onSuccess?.()
     } catch (error: any) {
       toast.error(error.message || "Failed to create sessions")
+      console.error(error)
     } finally {
       setIsLoading(false)
     }

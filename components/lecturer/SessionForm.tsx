@@ -122,26 +122,33 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
 
     setIsLoading(true)
     try {
-      const attendanceCode = nanoid(6).toUpperCase() // Generate 6-char code
+      // Generate session code (6-char alphanumeric)
+      const sessionCode = nanoid(6).toUpperCase()
       
-      const sessionData: any = {
+      // Calculate start and end times
+      const now = new Date()
+      const startTime = now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      
+      // Calculate end time based on duration
+      const durationMinutes = parseInt(data.duration)
+      const endDate = new Date(now.getTime() + durationMinutes * 60000)
+      const endTime = endDate.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      
+      // Build location string if required
+      let locationString = data.venue
+      if (data.requireLocation && currentLocation) {
+        locationString = `${data.venue} (${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}, radius: ${data.locationRadius}m)`
+      }
+      
+      const sessionData = {
         course_id: data.courseId,
         lecturer_id: lecturerId,
-        topic: data.topic,
-        venue: data.venue,
-        duration_minutes: parseInt(data.duration),
-        attendance_code: attendanceCode,
+        session_date: now.toISOString().split('T')[0],
+        start_time: startTime,
+        end_time: endTime,
+        location: locationString,
+        session_code: sessionCode,
         status: 'active',
-        session_date: new Date().toISOString().split('T')[0],
-        start_time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
-        started_at: new Date().toISOString(),
-      }
-
-      // Add location data if required
-      if (data.requireLocation && currentLocation) {
-        sessionData.location_latitude = currentLocation.latitude
-        sessionData.location_longitude = currentLocation.longitude
-        sessionData.location_radius = parseInt(data.locationRadius)
       }
 
       const { data: session, error } = await supabase
@@ -152,7 +159,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
 
       if (error) throw error
 
-      toast.success("Session created successfully")
+      toast.success(`Session created! Code: ${sessionCode}`)
       router.push(`/lecturer/sessions/${session.id}`)
     } catch (error: any) {
       toast.error(error.message || "Failed to create session")
