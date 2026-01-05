@@ -172,27 +172,31 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
   const availableVenues = getAvailableVenues()
 
   return (
-    <div className="bg-white p-6 rounded-xl border shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 md:p-6">
           <FormField
             control={form.control}
             name="courseId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Select Course</FormLabel>
+                <FormLabel className="text-gray-700 font-medium">Select Course</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger className="h-11">
+                    <SelectTrigger className="h-11 rounded-lg border-gray-200">
                       <SelectValue placeholder="Select a course..." />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {courses.map(course => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.code} - {course.title}
-                      </SelectItem>
-                    ))}
+                    {courses.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500">No courses available</div>
+                    ) : (
+                      courses.map(course => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.code} - {course.title}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -205,15 +209,15 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
             name="topic"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Topic / Description</FormLabel>
+                <FormLabel className="text-gray-700 font-medium">Topic / Description</FormLabel>
                 <FormControl>
                   <Input 
                     placeholder="e.g. Introduction to Web Protocols" 
-                    className="h-11"
+                    className="h-11 rounded-lg border-gray-200"
                     {...field} 
                   />
                 </FormControl>
-                <FormDescription>
+                <FormDescription className="text-xs text-gray-500">
                   Brief description of what will be covered today.
                 </FormDescription>
                 <FormMessage />
@@ -221,16 +225,16 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
             )}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="venue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Venue</FormLabel>
+                  <FormLabel className="text-gray-700 font-medium">Venue</FormLabel>
                   <Select onValueChange={handleVenueSelect} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11">
+                      <SelectTrigger className="h-11 rounded-lg border-gray-200">
                         <SelectValue placeholder="Select or enter venue" />
                       </SelectTrigger>
                     </FormControl>
@@ -250,10 +254,10 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
 
             {selectedVenue === "custom" && (
               <FormItem>
-                <FormLabel>Custom Venue Name</FormLabel>
+                <FormLabel className="text-gray-700 font-medium">Custom Venue Name</FormLabel>
                 <Input 
                   placeholder="Enter venue name"
-                  className="h-11"
+                  className="h-11 rounded-lg border-gray-200"
                   onChange={(e) => form.setValue("venue", e.target.value)}
                 />
               </FormItem>
@@ -264,10 +268,10 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
               name="duration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Duration</FormLabel>
+                  <FormLabel className="text-gray-700 font-medium">Duration</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11">
+                      <SelectTrigger className="h-11 rounded-lg border-gray-200">
                         <SelectValue placeholder="Select duration" />
                       </SelectTrigger>
                     </FormControl>
@@ -285,7 +289,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
           </div>
 
           {/* Location Verification Section */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-xl border">
+          <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
             <FormField
               control={form.control}
               name="requireLocation"
@@ -298,10 +302,10 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel className="font-medium">
+                    <FormLabel className="font-medium text-gray-900">
                       Require Location Verification
                     </FormLabel>
-                    <FormDescription>
+                    <FormDescription className="text-xs text-gray-500">
                       Students must be physically present within range to mark attendance.
                     </FormDescription>
                   </div>
@@ -310,7 +314,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
             />
 
             {requireLocation && (
-              <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-4 pt-4 border-t border-gray-200">
                 {/* Location Source Toggle */}
                 <div className="flex gap-2">
                   <Button
@@ -318,20 +322,20 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                     variant={useCurrentLocation ? "default" : "outline"}
                     size="sm"
                     onClick={() => setUseCurrentLocation(true)}
-                    className="flex-1"
+                    className="flex-1 h-10 rounded-lg text-sm"
                   >
                     <Navigation className="w-4 h-4 mr-2" />
-                    Use My Location
+                    My Location
                   </Button>
                   <Button
                     type="button"
                     variant={!useCurrentLocation ? "default" : "outline"}
                     size="sm"
                     onClick={() => setUseCurrentLocation(false)}
-                    className="flex-1"
+                    className="flex-1 h-10 rounded-lg text-sm"
                   >
                     <MapPin className="w-4 h-4 mr-2" />
-                    Use Venue Location
+                    Venue Location
                   </Button>
                 </div>
 
@@ -339,11 +343,11 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                 {useCurrentLocation && (
                   <div className="space-y-3">
                     {currentLocation ? (
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-emerald-600" />
-                        <div className="flex-1">
+                      <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-emerald-900">Location Captured</p>
-                          <p className="text-xs text-emerald-700 font-mono">
+                          <p className="text-xs text-emerald-700 font-mono break-all">
                             {formatCoordinates(currentLocation)}
                             {currentLocation.accuracy && ` (±${Math.round(currentLocation.accuracy)}m)`}
                           </p>
@@ -354,6 +358,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                           size="sm"
                           onClick={captureLocation}
                           disabled={isGettingLocation}
+                          className="flex-shrink-0"
                         >
                           {isGettingLocation ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -364,8 +369,8 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                       </div>
                     ) : locationError ? (
                       <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                        <div className="flex-1">
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-red-900">Location Error</p>
                           <p className="text-xs text-red-700">{locationError}</p>
                         </div>
@@ -375,6 +380,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                           size="sm"
                           onClick={captureLocation}
                           disabled={isGettingLocation}
+                          className="flex-shrink-0"
                         >
                           Retry
                         </Button>
@@ -385,7 +391,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                         variant="outline"
                         onClick={captureLocation}
                         disabled={isGettingLocation}
-                        className="w-full"
+                        className="w-full h-11 rounded-lg"
                       >
                         {isGettingLocation ? (
                           <>
@@ -409,10 +415,10 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                   name="locationRadius"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Allowed Radius</FormLabel>
+                      <FormLabel className="text-gray-700 font-medium">Allowed Radius</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-11">
+                          <SelectTrigger className="h-11 rounded-lg border-gray-200">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -423,7 +429,7 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                           <SelectItem value="500">500 meters (Very Relaxed)</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
+                      <FormDescription className="text-xs text-gray-500">
                         Maximum distance students can be from the class location.
                       </FormDescription>
                       <FormMessage />
@@ -434,10 +440,10 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
             )}
           </div>
 
-          <div className="pt-4">
+          <div className="pt-2">
             <Button 
               type="submit" 
-              className="w-full h-12 rounded-xl font-semibold bg-gradient-to-r from-purple-600 to-blue-600" 
+              className="w-full h-12 rounded-lg font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white" 
               disabled={isLoading || (requireLocation && !currentLocation)}
             >
               {isLoading ? (
