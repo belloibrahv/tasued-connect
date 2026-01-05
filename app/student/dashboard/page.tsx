@@ -84,7 +84,7 @@ export default function StudentDashboardPage() {
 
       const { data: attendanceData } = await supabase
         .from('attendance_records')
-        .select('*, lecture_sessions(course_id, courses(code, title))')
+        .select('*, lecture_sessions(course_id, courses(code, name))')
         .eq('student_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5)
@@ -95,7 +95,7 @@ export default function StudentDashboardPage() {
         .from('course_enrollments')
         .select(`
           id,
-          courses (id, code, title)
+          courses (id, code, name)
         `)
         .eq('student_id', user.id)
         .eq('status', 'active')
@@ -327,7 +327,7 @@ export default function StudentDashboardPage() {
                         {enrollment.courses?.code}
                       </p>
                       <p className="text-xs text-gray-400 truncate">
-                        {enrollment.courses?.title}
+                        {enrollment.courses?.name}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

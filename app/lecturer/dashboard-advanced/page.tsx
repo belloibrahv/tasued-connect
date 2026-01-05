@@ -29,7 +29,7 @@ import { StudentEnrollmentManager } from "@/components/lecturer/StudentEnrollmen
 interface Course {
   id: string
   code: string
-  title: string
+  name: string
   level: string
   semester: string
   min_attendance_percentage: number
@@ -45,7 +45,7 @@ interface Session {
   total_enrolled: number
   total_present: number
   total_absent: number
-  courses: { code: string; title: string }
+  courses: { code: string; name: string }
 }
 
 interface CourseStats {
@@ -130,7 +130,7 @@ export default function LecturerDashboardAdvancedPage() {
       // Fetch all sessions for this lecturer
       const { data: sessionsData } = await supabase
         .from("lecture_sessions")
-        .select("*, courses(code, title)")
+        .select("*, courses(code, name)")
         .eq("lecturer_id", user.id)
         .order("session_date", { ascending: false })
 
@@ -192,7 +192,7 @@ export default function LecturerDashboardAdvancedPage() {
 
             return {
               courseId: course.id,
-              courseName: `${course.code} - ${course.title}`,
+              courseName: `${course.code} - ${course.name}`,
               totalEnrolled: enrolledCount || 0,
               totalSessions: courseSessionsData?.length || 0,
               activeSessions,
@@ -235,13 +235,7 @@ export default function LecturerDashboardAdvancedPage() {
 
       const code = generateCode()
       const now = new Date()
-      const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-
-      const { count: enrolledCount } = await supabase
-        .from("course_enrollments")
-        .select("*", { count: "exact", head: true })
-        .eq("course_id", selectedCourse)
-        .eq("status", "active")
+      const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000)
 
       const { data, error } = await supabase
         .from("lecture_sessions")
@@ -251,11 +245,11 @@ export default function LecturerDashboardAdvancedPage() {
           session_code: code,
           session_date: now.toISOString().split("T")[0],
           start_time: now.toTimeString().split(" ")[0],
+          end_time: endTime.toTimeString().split(" ")[0],
+          location: "TBD",
           status: "active",
-          started_at: now.toISOString(),
-          total_enrolled: enrolledCount || 0,
         })
-        .select("*, courses(code, title)")
+        .select("*, courses(code, name)")
         .single()
 
       if (error) throw error
@@ -653,7 +647,7 @@ export default function LecturerDashboardAdvancedPage() {
                   <option value="">Choose a course...</option>
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>
-                      {course.code} - {course.title}
+                      {course.code} - {course.name}
                     </option>
                   ))}
                 </select>

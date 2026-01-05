@@ -352,7 +352,7 @@ function MarkAttendanceContent() {
       // Find the session by code
       const { data: sessionData, error: sessionError } = await supabase
         .from("lecture_sessions")
-        .select("*, courses(code, title)")
+        .select("*, courses(code, name)")
         .eq("session_code", sessionCode.toUpperCase())
         .eq("status", "active")
         .single()
@@ -362,16 +362,8 @@ function MarkAttendanceContent() {
         return
       }
       
-      // Check if session code has expired
-      if (sessionData.code_expires_at) {
-        const expiresAt = new Date(sessionData.code_expires_at)
-        if (expiresAt < new Date()) {
-          setError("Session code has expired. Please ask your lecturer for a new code.")
-          return
-        }
-        // Set expiration time for countdown display
-        setCodeExpiresAt(expiresAt)
-      }
+      // Session code is valid - no expiration check needed since we're checking status='active'
+      // The session will be marked as 'closed' when the lecturer ends it
       
       // Check if already marked
       const { data: { user } } = await supabase.auth.getUser()
@@ -673,7 +665,7 @@ function MarkAttendanceContent() {
               <div className="bg-white rounded-xl p-4 border border-gray-200">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
                 <p className="font-semibold text-gray-900">
-                  {session.courses?.code} - {session.courses?.title}
+                  {session.courses?.code} - {session.courses?.name}
                 </p>
                 {session.venue && (
                   <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
@@ -756,7 +748,7 @@ function MarkAttendanceContent() {
               <div className="bg-white rounded-xl p-4 border border-gray-200">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
                 <p className="font-semibold text-gray-900">
-                  {session.courses?.code} - {session.courses?.title}
+                  {session.courses?.code} - {session.courses?.name}
                 </p>
                 {timeRemaining && (
                   <p className="text-xs text-amber-600 mt-2 font-medium">
@@ -870,7 +862,7 @@ function MarkAttendanceContent() {
               <div className="bg-white rounded-xl p-4 border border-gray-200">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Session</p>
                 <p className="font-semibold text-gray-900">
-                  {session.courses?.code} - {session.courses?.title}
+                  {session.courses?.code} - {session.courses?.name}
                 </p>
                 {session.topic && (
                   <p className="text-sm text-gray-500 mt-1">{session.topic}</p>

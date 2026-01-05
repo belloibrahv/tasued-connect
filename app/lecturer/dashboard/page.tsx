@@ -85,7 +85,7 @@ export default function LecturerDashboardPage() {
       ] = await Promise.all([
         supabase.from('courses').select('*').eq('lecturer_id', user.id),
         supabase.from('lecture_sessions')
-          .select('*, courses(code, title)')
+          .select('*, courses(code, name)')
           .eq('lecturer_id', user.id)
           .eq('status', 'active')
           .single()
@@ -133,30 +133,22 @@ export default function LecturerDashboardPage() {
       const code = generateCode()
       const now = new Date()
       
-      // Set code expiration to 2 hours from now
-      const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-      
-      // Get enrolled students count for this course
-      const { count: enrolledCount } = await supabase
-        .from('course_enrollments')
-        .select('*', { count: 'exact', head: true })
-        .eq('course_id', selectedCourse)
-        .eq('status', 'active')
+      // Calculate end time (2 hours from now)
+      const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000)
       
       const { data, error } = await supabase
         .from('lecture_sessions')
         .insert({
           course_id: selectedCourse,
           lecturer_id: user.id,
-          attendance_code: code,
-          code_expires_at: expiresAt.toISOString(),
+          session_code: code,
           session_date: now.toISOString().split('T')[0],
           start_time: now.toTimeString().split(' ')[0],
-          status: 'active',
-          started_at: now.toISOString(),
-          total_enrolled: enrolledCount || 0
+          end_time: endTime.toTimeString().split(' ')[0],
+          location: 'TBD',
+          status: 'active'
         })
-        .select('*, courses(code, title)')
+        .select('*, courses(code, name)')
         .single()
 
       if (error) throw error
@@ -281,7 +273,7 @@ export default function LecturerDashboardPage() {
                 <p className="text-emerald-100 text-xs mb-2">Session Code</p>
                 <div className="flex items-center justify-between">
                   <span className="text-3xl font-bold font-mono tracking-widest">
-                    {activeSession.attendance_code}
+                    {activeSession.session_code}
                   </span>
                   <button 
                     onClick={copyCode}
@@ -369,7 +361,7 @@ export default function LecturerDashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">{course.code}</p>
-                      <p className="text-xs text-gray-400 truncate">{course.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{course.name}</p>
                     </div>
                   </Link>
                 ))}
@@ -417,7 +409,7 @@ export default function LecturerDashboardPage() {
                   <option value="">Choose a course...</option>
                   {courses.map((course) => (
                     <option key={course.id} value={course.id}>
-                      {course.code} - {course.title}
+                      {course.code} - {course.name}
                     </option>
                   ))}
                 </select>
