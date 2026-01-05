@@ -80,7 +80,8 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
   // Get current location when component mounts
   useEffect(() => {
     if (requireLocation && useCurrentLocation && isGeolocationAvailable()) {
-      captureLocation()
+      // Don't auto-capture on mount, let user click the button
+      // This gives them time to grant permission
     }
   }, [requireLocation, useCurrentLocation])
 
@@ -316,27 +317,30 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
             {requireLocation && (
               <div className="space-y-4 pt-4 border-t border-gray-200">
                 {/* Location Source Toggle */}
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={useCurrentLocation ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setUseCurrentLocation(true)}
-                    className="flex-1 h-10 rounded-lg text-sm"
-                  >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    My Location
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={!useCurrentLocation ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setUseCurrentLocation(false)}
-                    className="flex-1 h-10 rounded-lg text-sm"
-                  >
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Venue Location
-                  </Button>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-600">Choose location source:</p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={useCurrentLocation ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUseCurrentLocation(true)}
+                      className="flex-1 h-10 rounded-lg text-sm"
+                    >
+                      <Navigation className="w-4 h-4 mr-2" />
+                      My Location
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!useCurrentLocation ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setUseCurrentLocation(false)}
+                      className="flex-1 h-10 rounded-lg text-sm"
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Venue Location
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Current Location Display */}
@@ -372,7 +376,15 @@ export function SessionForm({ courses, lecturerId }: SessionFormProps) {
                         <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-red-900">Location Error</p>
-                          <p className="text-xs text-red-700">{locationError}</p>
+                          <p className="text-xs text-red-700 mb-2">{locationError}</p>
+                          <p className="text-xs text-red-600 mb-2">
+                            <strong>To fix this:</strong>
+                          </p>
+                          <ul className="text-xs text-red-600 space-y-1 list-disc list-inside">
+                            <li>Check your browser&apos;s location settings</li>
+                            <li>Make sure location permission is enabled for this site</li>
+                            <li>Try using &quot;Venue Location&quot; instead</li>
+                          </ul>
                         </div>
                         <Button
                           type="button"
