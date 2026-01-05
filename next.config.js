@@ -24,6 +24,7 @@ const nextConfig = {
         fs: false,
         path: false,
         crypto: false,
+        encoding: false,
       }
     }
     return config

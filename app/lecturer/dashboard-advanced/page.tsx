@@ -38,7 +38,7 @@ interface Course {
 interface Session {
   id: string
   course_id: string
-  attendance_code: string
+  session_code: string
   session_date: string
   start_time: string
   status: string
@@ -248,8 +248,7 @@ export default function LecturerDashboardAdvancedPage() {
         .insert({
           course_id: selectedCourse,
           lecturer_id: user.id,
-          attendance_code: code,
-          code_expires_at: expiresAt.toISOString(),
+          session_code: code,
           session_date: now.toISOString().split("T")[0],
           start_time: now.toTimeString().split(" ")[0],
           status: "active",
