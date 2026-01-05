@@ -460,6 +460,10 @@ function MarkAttendanceContent() {
       // Capture current frame BEFORE changing step
       const video = videoRef.current
       
+      if (!video) {
+        throw new Error("Video element not available")
+      }
+      
       // Create a canvas to capture the frame
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext("2d")

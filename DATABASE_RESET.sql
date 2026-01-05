@@ -269,6 +269,14 @@ USING (
   AND student_id = auth.uid()
 );
 
+-- Policy for students to insert their own attendance records
+CREATE POLICY "Students can insert own attendance" ON attendance_records
+FOR INSERT TO authenticated
+WITH CHECK (
+  (SELECT role FROM users WHERE id = auth.uid()) = 'student' 
+  AND student_id = auth.uid()
+);
+
 -- Policy for lecturers to manage attendance for their courses
 CREATE POLICY "Lecturers can manage course attendance" ON attendance_records
 FOR ALL TO authenticated
