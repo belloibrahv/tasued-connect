@@ -369,12 +369,12 @@ function MarkAttendanceContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
       
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord, error: checkError } = await supabase
         .from("attendance_records")
         .select("id")
         .eq("session_id", sessionData.id)
         .eq("student_id", user.id)
-        .single()
+        .maybeSingle()
       
       if (existingRecord) {
         setError("You have already marked attendance for this session")
