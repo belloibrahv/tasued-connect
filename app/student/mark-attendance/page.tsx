@@ -353,7 +353,7 @@ function MarkAttendanceContent() {
       const { data: sessionData, error: sessionError } = await supabase
         .from("lecture_sessions")
         .select("*, courses(code, title)")
-        .eq("attendance_code", sessionCode.toUpperCase())
+        .eq("session_code", sessionCode.toUpperCase())
         .eq("status", "active")
         .single()
       

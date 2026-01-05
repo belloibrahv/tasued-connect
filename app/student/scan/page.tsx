@@ -31,8 +31,8 @@ export default function ScanPage() {
       // Validate the session exists and is active
       const { data: session, error: sessionError } = await supabase
         .from('lecture_sessions')
-        .select('id, attendance_code, status, courses(code, title)')
-        .eq('attendance_code', sessionCode)
+        .select('id, session_code, status, courses(code, title)')
+        .eq('session_code', sessionCode)
         .eq('status', 'active')
         .single()
 

@@ -13,7 +13,7 @@ export async function markAttendance(attendanceCode: string) {
   const { data: session, error: sessionError } = await supabase
     .from('lecture_sessions')
     .select('*, courses(*)')
-    .eq('attendance_code', attendanceCode)
+    .eq('session_code', attendanceCode)
     .eq('status', 'active')
     .single()
 

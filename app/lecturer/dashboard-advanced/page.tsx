@@ -291,8 +291,8 @@ export default function LecturerDashboardAdvancedPage() {
   }
 
   const copyCode = () => {
-    if (activeSession?.attendance_code) {
-      navigator.clipboard.writeText(activeSession.attendance_code)
+    if (activeSession?.session_code) {
+      navigator.clipboard.writeText(activeSession.session_code)
       setCodeCopied(true)
       setTimeout(() => setCodeCopied(false), 2000)
     }
@@ -366,7 +366,7 @@ export default function LecturerDashboardAdvancedPage() {
               <p className="text-emerald-100 text-xs mb-2">Session Code</p>
               <div className="flex items-center justify-between">
                 <span className="text-4xl font-bold font-mono tracking-widest">
-                  {activeSession.attendance_code}
+                  {activeSession.session_code}
                 </span>
                 <button
                   onClick={copyCode}

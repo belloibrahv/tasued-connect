@@ -191,8 +191,8 @@ export default function LecturerDashboardPage() {
   }
 
   const copyCode = () => {
-    if (activeSession?.attendance_code) {
-      navigator.clipboard.writeText(activeSession.attendance_code)
+    if (activeSession?.session_code) {
+      navigator.clipboard.writeText(activeSession.session_code)
       setCodeCopied(true)
       setTimeout(() => setCodeCopied(false), 2000)
     }
