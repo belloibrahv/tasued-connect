@@ -96,10 +96,7 @@ export default function EnrollCoursePage() {
         .insert({
           course_id: courseId,
           student_id: user.id,
-          status: 'active',
-          attendance_percentage: 0,
-          classes_attended: 0,
-          total_classes: 0
+          status: 'active'
         })
 
       if (error) {

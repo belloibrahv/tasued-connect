@@ -160,20 +160,35 @@ export default function LecturerDashboardAdvancedPage() {
             ).length || 0
 
             const { data: attendanceData } = await supabase
+              .from("attendance_records")
+              .select("student_id, is_present")
+              .in("session_id", (courseSessionsData || []).map(s => s.id))
+
+            // Calculate attendance percentage for each enrolled student
+            const enrolledStudents = await supabase
               .from("course_enrollments")
-              .select("attendance_percentage")
+              .select("student_id")
               .eq("course_id", course.id)
               .eq("status", "active")
 
-            const avgAttendance =
-              attendanceData && attendanceData.length > 0
-                ? attendanceData.reduce((sum, e) => sum + e.attendance_percentage, 0) /
-                  attendanceData.length
+            let avgAttendance = 0
+            let atRisk = 0
+
+            if (enrolledStudents.data && enrolledStudents.data.length > 0) {
+              const studentAttendance = enrolledStudents.data.map(enrollment => {
+                const studentRecords = attendanceData?.filter(r => r.student_id === enrollment.student_id) || []
+                const presentCount = studentRecords.filter(r => r.is_present).length
+                const totalSessions = courseSessionsData?.length || 1
+                const percentage = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0
+                return percentage
+              })
+
+              avgAttendance = studentAttendance.length > 0
+                ? Math.round(studentAttendance.reduce((a, b) => a + b, 0) / studentAttendance.length)
                 : 0
 
-            const atRisk = attendanceData?.filter(
-              (e) => e.attendance_percentage < course.min_attendance_percentage
-            ).length || 0
+              atRisk = studentAttendance.filter(p => p < 75).length
+            }
 
             return {
               courseId: course.id,

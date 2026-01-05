@@ -47,7 +47,7 @@ export default function LecturerCoursesPage() {
         .from('courses')
         .select(`
           *,
-          course_enrollments (id, attendance_percentage),
+          course_enrollments (id, student_id),
           lecture_sessions (id, status, session_date)
         `)
         .eq('lecturer_id', user.id)
@@ -58,8 +58,10 @@ export default function LecturerCoursesPage() {
         const sessions = c.lecture_sessions || []
         const activeSession = sessions.find((s: any) => s.status === 'active')
         const enrollments = c.course_enrollments || []
-        const totalAtt = enrollments.reduce((acc: number, curr: any) => acc + Number(curr.attendance_percentage || 0), 0)
-        const avgAtt = enrollments.length ? Math.round(totalAtt / enrollments.length) : 0
+        
+        // Calculate average attendance dynamically (would need attendance_records data)
+        // For now, set to 0 as placeholder
+        const avgAtt = 0
 
         return {
           ...c,

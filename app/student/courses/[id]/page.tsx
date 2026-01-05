@@ -25,15 +25,13 @@ import { format } from "date-fns"
 
 interface AttendanceRecord {
   id: string
-  status: string
+  is_present: boolean
   marked_at: string
-  check_in_time: string | null
   marking_method: string
-  location_verified: boolean | null
+  session_id: string
   lecture_sessions: {
     id: string
-    topic: string
-    venue: string
+    location: string
     session_date: string
     start_time: string
   }
@@ -87,19 +85,17 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
       // Fetch enrollment data
       const { data: enrollmentData } = await supabase
         .from('course_enrollments')
-        .select('classes_attended, total_classes, attendance_percentage')
+        .select('id')
         .eq('course_id', params.id)
         .eq('student_id', user.id)
         .single()
 
-      setEnrollment(enrollmentData)
-
       // Fetch all sessions for this course
       const { data: sessionsData } = await supabase
         .from('lecture_sessions')
-        .select('id, topic, venue, session_date, start_time, status')
+        .select('id, location, session_date, start_time, status')
         .eq('course_id', params.id)
-        .in('status', ['active', 'closed'])
+        .in('status', ['active', 'completed'])
         .order('session_date', { ascending: false })
 
       setAllSessions(sessionsData || [])
@@ -108,14 +104,28 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
       const { data: recordsData } = await supabase
         .from('attendance_records')
         .select(`
-          id, status, marked_at, check_in_time, marking_method, location_verified,
-          lecture_sessions (id, topic, venue, session_date, start_time)
+          id, is_present, marked_at, marking_method,
+          session_id,
+          lecture_sessions (id, location, session_date, start_time)
         `)
-        .eq('course_id', params.id)
         .eq('student_id', user.id)
+        .in('session_id', (sessionsData || []).map(s => s.id))
         .order('marked_at', { ascending: false })
 
       setAttendanceRecords((recordsData as any) || [])
+
+      // Calculate attendance stats
+      const totalSessions = sessionsData?.length || 0
+      const attendedSessions = recordsData?.filter((r: any) => r.is_present).length || 0
+      const attendancePercentage = totalSessions > 0 
+        ? Math.round((attendedSessions / totalSessions) * 100)
+        : 0
+
+      setEnrollment({
+        classes_attended: attendedSessions,
+        total_classes: totalSessions,
+        attendance_percentage: attendancePercentage
+      })
 
     } catch (error) {
       console.error("Error fetching course data:", error)
@@ -167,12 +177,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
   // Build complete attendance history (including absences)
   const buildAttendanceHistory = () => {
     const history = allSessions.map(session => {
-      const record = attendanceRecords.find((r: any) => {
-        const sessionData = Array.isArray(r.lecture_sessions) 
-          ? r.lecture_sessions[0] 
-          : r.lecture_sessions
-        return sessionData?.id === session.id
-      })
+      const record = attendanceRecords.find((r: any) => r.session_id === session.id)
       
       if (record) {
         const sessionData = Array.isArray(record.lecture_sessions) 
@@ -180,24 +185,20 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
           : record.lecture_sessions
         return {
           sessionId: session.id,
-          date: session.session_date,
-          topic: session.topic,
-          venue: session.venue,
-          status: record.status,
-          time: record.check_in_time || format(new Date(record.marked_at), 'h:mm a'),
-          method: record.marking_method,
-          locationVerified: record.location_verified
+          date: sessionData?.session_date || session.session_date,
+          location: sessionData?.location || session.location,
+          status: record.is_present ? 'present' : 'absent',
+          time: format(new Date(record.marked_at), 'h:mm a'),
+          method: record.marking_method
         }
       } else {
         return {
           sessionId: session.id,
           date: session.session_date,
-          topic: session.topic,
-          venue: session.venue,
+          location: session.location,
           status: 'absent',
           time: null,
-          method: null,
-          locationVerified: null
+          method: null
         }
       }
     })
@@ -337,27 +338,24 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                   <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        record.status === 'present' ? 'bg-emerald-50' :
-                        record.status === 'late' ? 'bg-amber-50' : 'bg-red-50'
+                        record.status === 'present' ? 'bg-emerald-50' : 'bg-red-50'
                       }`}>
                         {record.status === 'present' ? (
                           <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        ) : record.status === 'late' ? (
-                          <Clock className="w-5 h-5 text-amber-500" />
                         ) : (
                           <XCircle className="w-5 h-5 text-red-500" />
                         )}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 text-sm">
-                          {record.topic || 'Class Session'}
+                          Class Session
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                           <span>{format(new Date(record.date), 'MMM d, yyyy')}</span>
-                          {record.venue && (
+                          {record.location && (
                             <>
                               <span>•</span>
-                              <span>{record.venue}</span>
+                              <span>{record.location}</span>
                             </>
                           )}
                         </div>
@@ -367,8 +365,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                       <Badge 
                         variant="secondary"
                         className={`text-xs ${
-                          record.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
-                          record.status === 'late' ? 'bg-amber-50 text-amber-700' : 
+                          record.status === 'present' ? 'bg-emerald-50 text-emerald-700' : 
                           'bg-red-50 text-red-700'
                         }`}
                       >

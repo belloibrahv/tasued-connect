@@ -94,14 +94,51 @@ export default function StudentDashboardPage() {
       const { data: coursesData } = await supabase
         .from('course_enrollments')
         .select(`
-          attendance_percentage,
+          id,
           courses (id, code, title)
         `)
         .eq('student_id', user.id)
         .eq('status', 'active')
         .limit(3)
 
-      setEnrolledCourses(coursesData || [])
+      // Calculate attendance percentage for each course
+      if (coursesData) {
+        const coursesWithAttendance = await Promise.all(
+          coursesData.map(async (enrollment: any) => {
+            // Get total sessions for the course
+            const { count: totalSessions } = await supabase
+              .from('lecture_sessions')
+              .select('*', { count: 'exact', head: true })
+              .eq('course_id', enrollment.courses.id)
+              .eq('status', 'active')
+
+            // Get attended sessions for this student
+            const { count: attendedSessions } = await supabase
+              .from('attendance_records')
+              .select('*', { count: 'exact', head: true })
+              .eq('student_id', user.id)
+              .in('session_id', 
+                (await supabase
+                  .from('lecture_sessions')
+                  .select('id')
+                  .eq('course_id', enrollment.courses.id)
+                ).data?.map((s: any) => s.id) || []
+              )
+
+            const percentage = totalSessions && totalSessions > 0 
+              ? Math.round((attendedSessions || 0) / totalSessions * 100)
+              : 0
+
+            return {
+              ...enrollment,
+              attendance_percentage: percentage
+            }
+          })
+        )
+        setEnrolledCourses(coursesWithAttendance)
+      } else {
+        setEnrolledCourses([])
+      }
 
     } catch (error) {
       console.error("Error fetching data:", error)

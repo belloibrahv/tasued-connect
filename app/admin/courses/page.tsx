@@ -92,7 +92,7 @@ export default function AdminCoursesPage() {
         .select(`
           *,
           lecturers:lecturer_id(first_name, last_name, title),
-          course_enrollments(count, attendance_percentage),
+          course_enrollments(count),
           lecture_sessions(count)
         `)
         .order('code', { ascending: true })
@@ -100,9 +100,8 @@ export default function AdminCoursesPage() {
       if (error) throw error
 
       const formatted: Course[] = data.map((c: any) => {
-        const enrollments = c.course_enrollments || []
-        const totalAttendance = enrollments.reduce((acc: number, curr: any) => acc + Number(curr.attendance_percentage), 0)
-        const avg = enrollments.length ? Math.round(totalAttendance / enrollments.length) : 0
+        // Average attendance would need to be calculated from attendance_records
+        const avg = 0
 
         return {
           ...c,

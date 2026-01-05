@@ -48,23 +48,28 @@ export default function AdminDashboardPage() {
         { count: usersCount, error: usersError },
         { count: coursesCount, error: coursesError },
         { count: activeSessionsCount, error: sessionsError },
-        { data: enrollmentData },
+        { count: attendanceCount },
         { data: activityData }
       ] = await Promise.all([
         supabase.from('users').select('*').eq('id', user.id).single(),
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('lecture_sessions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('course_enrollments').select('attendance_percentage'),
+        supabase.from('attendance_records').select('is_present', { count: 'exact', head: true }).eq('is_present', true),
         supabase.from('attendance_records').select('*, users(first_name, last_name, matric_number), courses(code)').order('marked_at', { ascending: false }).limit(5)
       ])
 
       // Calculate average attendance with error handling
       let avgAttendance = 0
-      if (enrollmentData && enrollmentData.length > 0) {
-        avgAttendance = Math.round(
-          enrollmentData.reduce((acc, curr) => acc + Number(curr.attendance_percentage || 0), 0) / enrollmentData.length
-        )
+      if (attendanceCount && attendanceCount > 0) {
+        // Get total sessions to calculate percentage
+        const { count: totalSessions } = await supabase
+          .from('lecture_sessions')
+          .select('*', { count: 'exact', head: true })
+        
+        if (totalSessions && totalSessions > 0) {
+          avgAttendance = Math.round((attendanceCount / totalSessions) * 100)
+        }
       }
 
       // Set stats with fallback to 0 on errors
