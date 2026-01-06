@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       .from('users')
       .select('id')
       .eq('id', id)
-      .single()
+      .maybeSingle()
 
     if (existingUser) {
       return NextResponse.json(
