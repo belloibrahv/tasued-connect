@@ -1,0 +1,32 @@
+CRITICAL: RLS POLICIES FIX REQUIRED
+
+The course page and session pages are not loading because of RLS (Row Level Security) policy issues.
+
+WHAT TO DO:
+1. Go to Supabase Dashboard
+2. Click "SQL Editor" in the left sidebar
+3. Click "New Query"
+4. Copy the ENTIRE contents of FIX_RLS_COMPREHENSIVE.sql
+5. Paste it into the SQL editor
+6. Click "Run"
+7. Wait for "Success" message
+8. Refresh your browser (Ctrl+F5 or Cmd+Shift+R)
+9. Try accessing the course page again
+
+WHAT THIS FIXES:
+- Course summary page will load
+- Session detail pages will load
+- Attendance counts will update in real-time
+- Lecturers can see all their sessions (active and completed)
+- All database queries will work properly
+
+IF YOU GET AN ERROR:
+- The error message will tell you which policy already exists
+- That's OK - it means the fix is partially applied
+- Try running the query again - it should complete successfully
+
+AFTER THE FIX:
+- All pages should load instantly
+- Real-time updates will work
+- No more loading spinners
+- Everything will be connected to the database
