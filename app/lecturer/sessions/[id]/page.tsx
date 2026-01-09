@@ -54,26 +54,45 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const [searchMatric, setSearchMatric] = useState("")
   const [foundStudent, setFoundStudent] = useState<any>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [pageError, setPageError] = useState<string | null>(null)
   const supabase = createClient()
 
-  const { records, isLoading: isRecordsLoading } = useAttendanceRealtime(params.id)
+  const { records, isLoading: isRecordsLoading, error: hookError } = useAttendanceRealtime(params.id)
 
   const fetchSessionDetails = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('lecture_sessions')
-      .select('*, courses(code, title, department)')
-      .eq('id', params.id)
-      .single()
+    try {
+      setPageError(null)
+      const { data, error } = await supabase
+        .from('lecture_sessions')
+        .select('*, courses(code, title, department)')
+        .eq('id', params.id)
+        .single()
 
-    if (!error && data) {
-      setSession(data)
+      if (error) {
+        console.error('Failed to fetch session:', error)
+        setPageError('Failed to load session. Please check if the session exists and you have access to it.')
+        toast.error('Failed to load session')
+        return
+      }
 
-      const { count } = await supabase
-        .from('course_enrollments')
-        .select('*', { count: 'exact', head: true })
-        .eq('course_id', data.course_id)
+      if (data) {
+        setSession(data)
 
-      setTotalEnrolled(count || 0)
+        const { count, error: countError } = await supabase
+          .from('course_enrollments')
+          .select('*', { count: 'exact', head: true })
+          .eq('course_id', data.course_id)
+
+        if (countError) {
+          console.error('Failed to fetch enrollment count:', countError)
+        } else {
+          setTotalEnrolled(count || 0)
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching session details:', err)
+      setPageError('An error occurred while loading the session')
+      toast.error('An error occurred while loading the session')
     }
   }, [params.id, supabase])
 
@@ -202,6 +221,22 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     } finally {
       setIsManualLoading(false)
     }
+  }
+
+  if (pageError) {
+    return (
+      <div className="container py-10">
+        <div className="flex h-[450px] flex-col items-center justify-center gap-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center max-w-md">
+            <h2 className="text-lg font-semibold text-red-900 mb-2">Unable to Load Session</h2>
+            <p className="text-red-700 mb-4">{pageError}</p>
+            <Link href="/lecturer/dashboard">
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!session || isRecordsLoading) {

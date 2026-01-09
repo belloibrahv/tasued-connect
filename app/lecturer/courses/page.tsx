@@ -54,14 +54,45 @@ export default function LecturerCoursesPage() {
 
       if (error) throw error
 
+      // Fetch attendance data for all courses
+      const { data: attendanceData } = await supabase
+        .from('attendance_records')
+        .select(`
+          session_id,
+          is_present,
+          lecture_sessions (course_id)
+        `)
+
+      // Build attendance map by session
+      const attendanceBySession: { [key: string]: { present: number; total: number } } = {}
+      attendanceData?.forEach((record: any) => {
+        const sessionId = record.session_id
+        if (!attendanceBySession[sessionId]) {
+          attendanceBySession[sessionId] = { present: 0, total: 0 }
+        }
+        attendanceBySession[sessionId].total++
+        if (record.is_present) {
+          attendanceBySession[sessionId].present++
+        }
+      })
+
       const formattedCourses = (data || []).map(c => {
         const sessions = c.lecture_sessions || []
         const activeSession = sessions.find((s: any) => s.status === 'active')
         const enrollments = c.course_enrollments || []
         
-        // Calculate average attendance dynamically (would need attendance_records data)
-        // For now, set to 0 as placeholder
-        const avgAtt = 0
+        // Calculate average attendance from actual data
+        let totalPresent = 0
+        let totalRecords = 0
+        sessions.forEach((session: any) => {
+          const stats = attendanceBySession[session.id]
+          if (stats) {
+            totalPresent += stats.present
+            totalRecords += stats.total
+          }
+        })
+        
+        const avgAtt = totalRecords > 0 ? Math.round((totalPresent / totalRecords) * 100) : 0
 
         return {
           ...c,
@@ -75,6 +106,7 @@ export default function LecturerCoursesPage() {
 
       setCourses(formattedCourses)
     } catch (error: any) {
+      console.error('Error fetching courses:', error)
       toast.error(error.message || "Failed to fetch courses")
     } finally {
       setIsLoading(false)
