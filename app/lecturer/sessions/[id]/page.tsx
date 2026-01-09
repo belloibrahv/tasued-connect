@@ -62,6 +62,11 @@ export default function SessionPage({ params }: { params: { id: string } }) {
   const fetchSessionDetails = useCallback(async () => {
     try {
       setPageError(null)
+      
+      // First, get current user info for debugging
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log('Current user:', user?.id)
+      
       const { data, error } = await supabase
         .from('lecture_sessions')
         .select('*, courses(code, title, department)')
@@ -70,12 +75,23 @@ export default function SessionPage({ params }: { params: { id: string } }) {
 
       if (error) {
         console.error('Failed to fetch session:', error)
-        setPageError('Failed to load session. Please check if the session exists and you have access to it.')
+        console.error('Error code:', error.code)
+        console.error('Error message:', error.message)
+        
+        // Check if it's an RLS error
+        if (error.code === 'PGRST116' || error.message?.includes('row level security')) {
+          setPageError('You do not have permission to access this session. Please check if you are the session lecturer.')
+        } else if (error.code === 'PGRST100') {
+          setPageError('Session not found. It may have been deleted.')
+        } else {
+          setPageError('Failed to load session. Please check if the session exists and you have access to it.')
+        }
         toast.error('Failed to load session')
         return
       }
 
       if (data) {
+        console.log('Session loaded:', data.id, 'Lecturer ID:', data.lecturer_id)
         setSession(data)
 
         const { count, error: countError } = await supabase
