@@ -51,8 +51,7 @@ export async function markAttendance(attendanceCode: string) {
     .insert({
       session_id: session.id,
       student_id: user.id,
-      course_id: session.course_id,
-      status: 'present',
+      is_present: true,
       marking_method: 'qr',
       marked_at: new Date().toISOString()
     })

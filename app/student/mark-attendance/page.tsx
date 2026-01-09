@@ -515,6 +515,7 @@ function MarkAttendanceContent() {
       const attendanceData: any = {
         session_id: session.id,
         student_id: user.id,
+        is_present: true,
         marking_method: "face",
         marked_at: new Date().toISOString()
       }

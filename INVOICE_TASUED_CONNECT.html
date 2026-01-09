@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - TASUED Connect Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 20px;
+        }
+        
+        .company-info h1 {
+            font-size: 28px;
+            color: #1e40af;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .company-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 3px 0;
+        }
+        
+        .invoice-title {
+            text-align: right;
+        }
+        
+        .invoice-title h2 {
+            font-size: 24px;
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        
+        .invoice-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .detail-section h3 {
+            color: #1e40af;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .detail-section p {
+            color: #333;
+            margin: 4px 0;
+            line-height: 1.6;
+        }
+        
+        .project-section {
+            background-color: #f9fafb;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #1e40af;
+        }
+        
+        .project-section h3 {
+            color: #1e40af;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .project-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 14px;
+        }
+        
+        .project-details p {
+            margin: 8px 0;
+        }
+        
+        .project-details strong {
+            color: #1e40af;
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .purpose-text {
+            grid-column: 1 / -1;
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        table thead {
+            background-color: #1e40af;
+            color: white;
+        }
+        
+        table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+        
+        table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        .amount-column {
+            text-align: right;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        
+        .totals {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 40px;
+        }
+        
+        .totals-box {
+            width: 350px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+        
+        .total-row.grand-total {
+            border-bottom: 3px solid #1e40af;
+            border-top: 2px solid #1e40af;
+            padding: 15px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e40af;
+            margin-top: 10px;
+        }
+        
+        .total-label {
+            font-weight: 600;
+        }
+        
+        .total-amount {
+            text-align: right;
+        }
+        
+        .notes {
+            background-color: #f0f9ff;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #1e40af;
+            margin-bottom: 30px;
+            font-size: 13px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .notes strong {
+            color: #1e40af;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .footer {
+            border-top: 2px solid #e5e7eb;
+            padding-top: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+        }
+        
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+        }
+        
+        .signature-box {
+            text-align: center;
+        }
+        
+        .signature-container {
+            position: relative;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        
+        .signature-line {
+            border-top: 2px solid #333;
+            position: relative;
+            height: 0;
+        }
+        
+        .signature-name {
+            font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+            font-size: 20px;
+            color: #1e40af;
+            font-weight: 600;
+            letter-spacing: 1px;
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 0 8px;
+            white-space: nowrap;
+        }
+        
+        .signature-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 12px;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+        }
+        
+        .currency {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="company-info">
+                <h1>IBTECH</h1>
+                <p><strong>Professional Software Development Services</strong></p>
+                <p>Email: belloibrahv@gmail.com</p>
+                <p>Phone: +234 (0) 901 573 0035</p>
+                <p>Website: <a href="https://tasued-connect.onrender.com/" style="color: #1e40af; text-decoration: none;">https://tasued-connect.onrender.com/</a></p>
+            </div>
+            <div class="invoice-title">
+                <h2>INVOICE</h2>
+                <p><strong>Invoice #:</strong> INV-2025-001</p>
+                <p><strong>Date:</strong> January 6, 2025</p>
+                <p><strong>Due Date:</strong> Upon Receipt</p>
+            </div>
+        </div>
+        
+        <!-- Invoice Details -->
+        <div class="invoice-details">
+            <div class="detail-section">
+                <h3>Bill To</h3>
+                <p><strong>TASUED Administration</strong></p>
+                <p>Tai Solarin University of Education</p>
+                <p>Ijagun, Ijebu-Ode</p>
+                <p>Ogun State, Nigeria</p>
+            </div>
+            <div class="detail-section">
+                <h3>From</h3>
+                <p><strong>IBTECH</strong></p>
+                <p>Software Development Company</p>
+                <p>Nigeria</p>
+            </div>
+        </div>
+        
+        <!-- Project Section -->
+        <div class="project-section">
+            <h3>Project Information</h3>
+            <div class="project-details">
+                <p>
+                    <strong>Project Name</strong>
+                    TASUED Connect - Biometric Attendance Management System
+                </p>
+                <p>
+                    <strong>Project Code</strong>
+                    TASUED-2024-BIO-001
+                </p>
+                <p>
+                    <strong>Project Duration</strong>
+                    Full Development Cycle
+                </p>
+                <p>
+                    <strong>Status</strong>
+                    Completed & Deployed
+                </p>
+                <p class="purpose-text">
+                    <strong>Project Purpose & Scope</strong>
+                    Development of a comprehensive biometric attendance management system for TASUED. The system includes face recognition technology, QR code scanning, geolocation verification, and real-time attendance tracking. Features include student and lecturer dashboards, course management, attendance records, face enrollment, liveness detection, and comprehensive reporting capabilities. The system is designed to streamline attendance management across the institution while ensuring security and accuracy through biometric verification.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Services Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th class="amount-column">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>TASUED Connect - Biometric Attendance System</strong><br>
+                        <span style="color: #666; font-size: 13px;">Full-stack development including:</span>
+                        <ul style="margin: 8px 0 0 20px; color: #666; font-size: 13px;">
+                            <li>Face recognition & biometric verification</li>
+                            <li>QR code scanning integration</li>
+                            <li>Geolocation verification</li>
+                            <li>Student & Lecturer dashboards</li>
+                            <li>Course management system</li>
+                            <li>Real-time attendance tracking</li>
+                            <li>Database design & optimization</li>
+                            <li>API development & integration</li>
+                            <li>Security implementation</li>
+                            <li>Testing & deployment</li>
+                        </ul>
+                    </td>
+                    <td>1</td>
+                    <td class="amount-column">₦130,000.00</td>
+                    <td class="amount-column">₦130,000.00</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Totals -->
+        <div class="totals">
+            <div class="totals-box">
+                <div class="total-row">
+                    <span class="total-label">Subtotal:</span>
+                    <span class="total-amount">₦130,000.00</span>
+                </div>
+                <div class="total-row">
+                    <span class="total-label">Tax (0%):</span>
+                    <span class="total-amount">₦0.00</span>
+                </div>
+                <div class="total-row grand-total">
+                    <span class="total-label">TOTAL DUE:</span>
+                    <span class="total-amount">₦130,000.00</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notes -->
+        <div class="notes">
+            <strong>Payment Terms & Notes:</strong>
+            <p>• Payment received and confirmed as of January 6, 2025</p>
+            <p>• This invoice represents the full project development and deployment of the TASUED Connect Biometric Attendance Management System</p>
+            <p>• All deliverables have been completed and the system is fully operational</p>
+            <p>• Post-deployment support and maintenance available upon request</p>
+        </div>
+        
+        <!-- Signature Section -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-container">
+                    <div class="signature-line">
+                        <span class="signature-name">Bello Ibrahim</span>
+                    </div>
+                </div>
+                <div class="signature-title">
+                    IBTECH<br>
+                    Authorized Representative
+                </div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-container">
+                    <div class="signature-line"></div>
+                </div>
+                <div class="signature-title">
+                    TASUED Administration<br>
+                    Authorized Approver
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>IBTECH - Professional Software Development Services</strong></p>
+            <p>Email: belloibrahv@gmail.com | Phone: +234 (0) 901 573 0035</p>
+            <p>Project URL: <a href="https://tasued-connect.onrender.com/" style="color: #1e40af; text-decoration: none;">https://tasued-connect.onrender.com/</a></p>
+            <p style="margin-top: 15px; color: #999;">This is a professional invoice document. Please retain for your records.</p>
+        </div>
+    </div>
+</body>
+</html>

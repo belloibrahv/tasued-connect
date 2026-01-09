@@ -97,7 +97,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     const data = records.map(r => ({
       matric_number: r.users?.matric_number || 'N/A',
       name: `${r.users?.first_name} ${r.users?.last_name}`,
-      status: r.status,
+      status: r.is_present ? 'present' : 'absent',
       marked_at: r.marked_at,
       method: r.marking_method
     }))
@@ -186,6 +186,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
         .insert({
           session_id: session.id,
           student_id: foundStudent.id,
+          is_present: true,
           marking_method: 'manual',
           marked_at: new Date().toISOString()
         })
@@ -211,7 +212,7 @@ export default function SessionPage({ params }: { params: { id: string } }) {
     )
   }
 
-  const presentCount = records.length
+  const presentCount = records.filter(r => r.is_present).length
   const attendanceRate = totalEnrolled > 0 ? Math.round((presentCount / totalEnrolled) * 100) : 0
 
   return (

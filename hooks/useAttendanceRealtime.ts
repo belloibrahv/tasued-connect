@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 export type AttendanceRecord = {
   id: string
   student_id: string
-  status: string
+  is_present: boolean
   marked_at: string
   marking_method: string
   users: {
@@ -50,7 +50,7 @@ export function useAttendanceRealtime(sessionId: string) {
         .select(`
           id,
           student_id,
-          status,
+          is_present,
           marked_at,
           marking_method,
           users (
@@ -102,7 +102,7 @@ export function useAttendanceRealtime(sessionId: string) {
             const fullRecord: AttendanceRecord = {
               id: newRecord.id,
               student_id: newRecord.student_id,
-              status: newRecord.status,
+              is_present: newRecord.is_present,
               marked_at: newRecord.marked_at,
               marking_method: newRecord.marking_method,
               users: userInfo
