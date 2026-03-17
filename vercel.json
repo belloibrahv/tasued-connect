@@ -6,11 +6,5 @@
       "use": "@vercel/next",
       "config": {}
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
   ]
 }
